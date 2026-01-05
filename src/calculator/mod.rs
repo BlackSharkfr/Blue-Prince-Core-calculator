@@ -70,8 +70,11 @@ pub fn char_to_num(c: char) -> Option<u32> {
 /**
     Converts cypher number in the range `1..=26` to char
 
-    Input is not checked.
+    Returns None if the character is invalid
 */
-pub fn num_to_char_unchecked(num: u32) -> char {
-    char::from_u32('A' as u32 - 1 + num).unwrap()
+pub fn num_to_char(num: u32) -> Option<char> {
+    match num {
+        1..=26 => unsafe { Some(char::from_u32_unchecked('A' as u32 - 1 + num)) },
+        _ => None,
+    }
 }

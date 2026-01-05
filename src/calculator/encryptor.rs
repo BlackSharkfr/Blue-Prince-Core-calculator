@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::calculator::{Operation, char_to_num, num_to_char_unchecked};
+use crate::calculator::{Operation, char_to_num, num_to_char};
 
 /// Every letter in the range `'A'..='Z'` converted to cypher numbers
 const ALPHABET: RangeInclusive<u32> = 1..=26;
@@ -36,11 +36,11 @@ pub fn encrypt_letter(c: char) -> Result<Vec<[char; 4]>, String> {
             ALPHABET.flat_map(move |d| {
                 op_remain.iter().flat_map(move |op| {
                     op.apply(total, d).and_then(|total| {
-                        (total == target).then_some({
-                            let a = num_to_char_unchecked(a);
-                            let b = num_to_char_unchecked(b);
-                            let c = num_to_char_unchecked(c);
-                            let d = num_to_char_unchecked(d);
+                        (total == target).then_some(unsafe {
+                            let a = num_to_char(a).unwrap_unchecked();
+                            let b = num_to_char(b).unwrap_unchecked();
+                            let c = num_to_char(c).unwrap_unchecked();
+                            let d = num_to_char(d).unwrap_unchecked();
                             [a, b, c, d]
                         })
                     })

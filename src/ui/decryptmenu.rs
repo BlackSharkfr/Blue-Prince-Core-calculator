@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEventKind},
     prelude::*,
@@ -8,7 +9,7 @@ use crate::{
     calculator::{
         CORE_LENGTH,
         decryptor::{DecryptError, decrypt_numbers, decrypt_word},
-        num_to_char_unchecked,
+        num_to_char,
     },
     ui::{App, Mode, Prompt},
 };
@@ -19,7 +20,7 @@ const PREVIOUS_QUERIES_MAX_LEN: usize = 128;
 /// Decrypt page state
 #[derive(Default)]
 pub struct Decrypt {
-    previous_queries: Vec<DecryptQuery>,
+    history: Vec<DecryptQuery>,
     table_state: TableState,
     selected: Option<usize>,
     prompt: Prompt,
@@ -39,38 +40,30 @@ impl Decrypt {
         ])
         .areas(frame.area());
 
-        Line::from(vec!["Blue Prince".bold().blue(), " - Decrypt".bold()])
-            .centered()
-            .render(title_bar, frame.buffer_mut());
+        let header = Line::from(vec!["Blue Prince".bold().blue(), " - Decrypt".bold()]).centered();
+        header.render(title_bar, frame.buffer_mut());
 
         let history_block = Block::bordered()
             .title(" Previous decryptions ")
             .padding(Padding::horizontal(1));
 
-        let max_query_width = self
-            .previous_queries
-            .iter()
-            .map(|query| query.input.len())
-            .max();
+        let max_query_width = self.history.iter().map(|query| query.input.len()).max();
 
         let table = match max_query_width {
             None => Table::new([Row::default()], [Constraint::Fill(1)]),
             Some(width) => Table::new(
-                self.previous_queries
-                    .iter()
-                    .enumerate()
-                    .map(|(index, query)| {
-                        let style = if self.selected == Some(index) {
-                            style::Modifier::REVERSED
-                        } else {
-                            Default::default()
-                        };
-                        Row::new(vec![
-                            Text::from(query.input.clone()).italic(),
-                            Text::from(query.output_text()),
-                        ])
-                        .style(style)
-                    }),
+                self.history.iter().enumerate().map(|(index, query)| {
+                    let style = if self.selected == Some(index) {
+                        style::Modifier::REVERSED
+                    } else {
+                        Default::default()
+                    };
+                    Row::new(vec![
+                        Text::from(query.input.clone()).italic(),
+                        Text::from(query.output_text()),
+                    ])
+                    .style(style)
+                }),
                 [Constraint::Length(width as u16), Constraint::Fill(1)],
             ),
         };
@@ -111,10 +104,10 @@ impl Decrypt {
     fn history_up(&mut self) {
         let query = match self.selected {
             None => {
-                let Some(query) = self.previous_queries.last() else {
+                let Some(query) = self.history.last() else {
                     return;
                 };
-                self.selected = Some(self.previous_queries.len() - 1);
+                self.selected = Some(self.history.len() - 1);
                 self.table_state.select_last();
                 query
             }
@@ -122,7 +115,7 @@ impl Decrypt {
                 let Some(new_index) = index.checked_sub(1) else {
                     return;
                 };
-                let Some(query) = self.previous_queries.get(new_index) else {
+                let Some(query) = self.history.get(new_index) else {
                     return;
                 };
                 self.selected = Some(new_index);
@@ -140,7 +133,7 @@ impl Decrypt {
         };
         let new_index = index + 1;
 
-        let Some(query) = self.previous_queries.get(new_index) else {
+        let Some(query) = self.history.get(new_index) else {
             self.selected = None;
             self.prompt.clear();
             return;
@@ -163,10 +156,10 @@ impl Decrypt {
         self.selected = None;
 
         let decrypt_query = process_input(input);
-        if self.previous_queries.len() > PREVIOUS_QUERIES_MAX_LEN {
-            self.previous_queries.remove(0);
+        if self.history.len() > PREVIOUS_QUERIES_MAX_LEN {
+            self.history.remove(0);
         }
-        self.previous_queries.push(decrypt_query);
+        self.history.push(decrypt_query);
         self.table_state.select_last();
     }
 }
@@ -246,34 +239,64 @@ impl DecryptQuery {
     }
 
     fn output_text(&self) -> Line<'_> {
-        let mut error_text = String::new();
-        if !self.errors.is_empty() {
-            error_text = format!("Errors : {}", self.errors.join(" "));
+        let errors_header = match self.errors.len() {
+            0 => Span::default(),
+            1 => Span::from("Error : "),
+            _ => Span::from("Errors : "),
         }
-        let mut text = String::new();
-        let mut numbers = String::new();
-        for result in &self.cores {
-            match result {
-                Some(core @ 1..=26) => {
-                    text.push(num_to_char_unchecked(*core));
-                    numbers.push_str(&format!("{core}, "));
-                }
-                Some(core) => {
-                    text.push('?');
-                    numbers.push_str(&format!("{core}, "));
-                }
+        .red();
+        let errors = self.errors.iter().map(|e| Span::from(e).red());
+        let errors = Itertools::intersperse(errors, Span::from(", ").red());
+
+        if self.errors.len() == self.cores.len() {
+            return Line::from_iter(std::iter::once(errors_header).chain(errors));
+        }
+
+        let values_header = match self.cores.len() {
+            0 => Span::default(),
+            1 => Span::from("Value : "),
+            _ => Span::from("Values : "),
+        }
+        .green();
+        let values = self.cores.iter().map(|core| match core {
+            Some(number) => Span::from(number.to_string()).green(),
+            None => Span::from("?").red(),
+        });
+        let values = Itertools::intersperse(values, Span::from(", ").green());
+
+        let text_header = match self.cores.len() {
+            0 => Span::default(),
+            _ => Span::from(". Text : "),
+        }
+        .green();
+        let text = self
+            .cores
+            .iter()
+            .map(|core| match core.and_then(|num| num_to_char(num)) {
+                Some(c) => Span::from(c.to_string()).green(),
                 None => {
-                    text.push('?');
-                    numbers.push_str("?, ");
+                    let span = Span::from("?");
+                    match core.is_some() {
+                        true => span.green(),
+                        false => span.red(),
+                    }
                 }
-            }
-        }
-        let mut output = Line::default();
-        if self.cores.iter().any(Option::is_some) {
-            output.push_span(Span::from(format!("Value : {numbers} Text : {text} ")).green());
-        }
-        output.push_span(Span::from(error_text).red());
-        output
+            });
+
+        let text_footer = match self.errors.len() {
+            0 => Span::default(),
+            _ => Span::from(". ").green(),
+        };
+
+        Line::from_iter(
+            std::iter::once(values_header)
+                .chain(values)
+                .chain([text_header])
+                .chain(text)
+                .chain([text_footer])
+                .chain([errors_header])
+                .chain(errors),
+        )
     }
 }
 
