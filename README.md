@@ -5,7 +5,8 @@ Game official website [https://www.blueprincegame.com/]
 Steam : [https://store.steampowered.com/app/1569580/Blue_Prince/]
 
 # Screenshots
-![Screenshot](/screenshot/blueprince-corecalc1.png)
+<img src="screenshot/blueprince-corecalc1.png" width="50%" alt="Screenshot1">
+<img src="screenshot/blueprince-corecalc2.png" width="50%" alt="Screenshot2">
 
 # Features
 - Decrypt a numeric core from 4 numbers
