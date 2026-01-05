@@ -13,11 +13,16 @@ use crate::{
     ui::{App, Mode, Prompt},
 };
 
+/// Sanitize user inputs : do not allow infinite history
+const PREVIOUS_QUERIES_MAX_LEN: usize = 128;
+
+/// Decrypt page state
 #[derive(Default)]
 pub struct Decrypt {
     previous_queries: Vec<DecryptQuery>,
-    history_table: TableState,
-    pub prompt: Prompt,
+    table_state: TableState,
+    selected: Option<usize>,
+    prompt: Prompt,
 }
 
 impl Decrypt {
@@ -51,12 +56,21 @@ impl Decrypt {
         let table = match max_query_width {
             None => Table::new([Row::default()], [Constraint::Fill(1)]),
             Some(width) => Table::new(
-                self.previous_queries.iter().map(|query| {
-                    Row::new(vec![
-                        Text::from(query.input.clone()).italic(),
-                        Text::from(query.output_text()),
-                    ])
-                }),
+                self.previous_queries
+                    .iter()
+                    .enumerate()
+                    .map(|(index, query)| {
+                        let style = if self.selected == Some(index) {
+                            style::Modifier::REVERSED
+                        } else {
+                            Default::default()
+                        };
+                        Row::new(vec![
+                            Text::from(query.input.clone()).italic(),
+                            Text::from(query.output_text()),
+                        ])
+                        .style(style)
+                    }),
                 [Constraint::Length(width as u16), Constraint::Fill(1)],
             ),
         };
@@ -69,7 +83,7 @@ impl Decrypt {
             table,
             history_area,
             frame.buffer_mut(),
-            &mut self.history_table,
+            &mut self.table_state,
         );
 
         self.prompt.draw(prompt_area, frame);
@@ -94,15 +108,50 @@ impl Decrypt {
         .render(instructions_bar, frame.buffer_mut());
     }
 
-    pub fn history_up(&mut self) {
-        self.history_table.scroll_up_by(1);
+    fn history_up(&mut self) {
+        let query = match self.selected {
+            None => {
+                let Some(query) = self.previous_queries.last() else {
+                    return;
+                };
+                self.selected = Some(self.previous_queries.len() - 1);
+                self.table_state.select_last();
+                query
+            }
+            Some(index) => {
+                let Some(new_index) = index.checked_sub(1) else {
+                    return;
+                };
+                let Some(query) = self.previous_queries.get(new_index) else {
+                    return;
+                };
+                self.selected = Some(new_index);
+                self.table_state.select(Some(new_index));
+                query
+            }
+        };
+        self.prompt.input = query.input.clone();
+        self.prompt.event_end();
     }
 
-    pub fn history_down(&mut self) {
-        self.history_table.scroll_down_by(1);
+    fn history_down(&mut self) {
+        let Some(index) = self.selected else {
+            return;
+        };
+        let new_index = index + 1;
+
+        let Some(query) = self.previous_queries.get(new_index) else {
+            self.selected = None;
+            self.prompt.clear();
+            return;
+        };
+        self.selected = Some(new_index);
+        self.table_state.select(Some(new_index));
+        self.prompt.input = query.input.clone();
+        self.prompt.event_end();
     }
 
-    pub fn input_submitted(&mut self) {
+    fn input_submitted(&mut self) {
         let Some(input) = self.prompt.event_enter() else {
             return;
         };
@@ -111,9 +160,14 @@ impl Decrypt {
             return;
         }
 
+        self.selected = None;
+
         let decrypt_query = process_input(input);
+        if self.previous_queries.len() > PREVIOUS_QUERIES_MAX_LEN {
+            self.previous_queries.remove(0);
+        }
         self.previous_queries.push(decrypt_query);
-        self.history_table.select_last();
+        self.table_state.select_last();
     }
 }
 

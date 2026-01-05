@@ -13,12 +13,15 @@ use ratatui::{
 
 use crate::ui::{decryptmenu::Decrypt, encryptmenu::Encrypt, mainmenu::MainMenu};
 
+/// Application state
 #[derive(Default)]
 pub struct App {
-    mode: Mode,
+    /// States of pages
     main_menu: MainMenu,
     decrypt: Decrypt,
     encrypt: Encrypt,
+    /// Current active page
+    mode: Mode,
     quit: bool,
 }
 
@@ -88,6 +91,14 @@ impl App {
     }
 }
 
+/// Sanitize user input : do not allow infinite input text
+const PROMPT_MAX_LEN: usize = 192;
+
+/**
+    Simple widget for an input text prompt
+
+    I didn't find on in ratatui's default widgets so I made this very basic one
+*/
 #[derive(Default)]
 pub struct Prompt {
     input: String,
@@ -125,7 +136,7 @@ impl Prompt {
     }
 
     pub fn event_char(&mut self, c: char) {
-        if !(c.is_ascii_alphanumeric() || c == ' ') {
+        if !(c.is_ascii_alphanumeric() || c == ' ') || self.input.len() > PROMPT_MAX_LEN {
             return;
         }
         let c = c.to_ascii_uppercase();

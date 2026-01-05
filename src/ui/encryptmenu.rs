@@ -13,7 +13,7 @@ pub struct Encrypt {
     results: Option<Result<EncryptResults, String>>,
     page_start: usize,
     page_len: u16,
-    pub prompt: Prompt,
+    prompt: Prompt,
 }
 
 struct EncryptResults {
@@ -103,7 +103,7 @@ impl Encrypt {
         .render(instructions_bar, frame.buffer_mut());
     }
 
-    pub fn input_submitted(&mut self) {
+    fn input_submitted(&mut self) {
         let Some(input) = self.prompt.event_enter() else {
             return;
         };
@@ -121,10 +121,10 @@ impl Encrypt {
 
         self.results = Some(results);
     }
-    pub fn previous_page(&mut self) {
+    fn previous_page(&mut self) {
         self.page_start = self.page_start.saturating_sub(self.page_len as usize);
     }
-    pub fn next_page(&mut self) {
+    fn next_page(&mut self) {
         let Some(Ok(results)) = &mut self.results else {
             return;
         };
