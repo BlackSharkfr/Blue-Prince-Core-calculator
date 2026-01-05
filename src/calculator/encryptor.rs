@@ -1,19 +1,6 @@
-use crate::calculator::{Cypher, Operator, char_to_num, num_to_char};
+use crate::calculator::{Operator, char_to_num, num_to_char};
 
-pub fn encrypt_number(number: u32) -> Result<Vec<Cypher>, String> {
-    Err("unimplemented".to_string())
-}
-
-pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
-    let Some(c) = input.chars().next() else {
-        return Err("Invalid input : expected at least one char".to_string());
-    };
-
-    if input.len() != 1 {
-        return Err("Invalid input : expected a single character".to_string());
-    }
-
-    todo!("Add guard to exclude numbers");
+pub fn encrypt_letter(c: char) -> Result<Vec<[char; 4]>, String> {
     let Some(target) = char_to_num(c) else {
         return Err("Invalid input : expected an alphabetic letter".to_string());
     };
@@ -44,7 +31,7 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
                             let b = num_to_char(b);
                             let c = num_to_char(c);
                             let d = num_to_char(d);
-                            Cypher::Text([a, b, c, d])
+                            [a, b, c, d]
                         })
                     })
                 })

@@ -1,11 +1,20 @@
 pub mod decryptor;
 pub mod encryptor;
 
-use std::fmt::Display;
+/// Core is composed of 4 numbers
+pub const CORE_LENGTH: usize = 4;
 
 use bitflags::bitflags;
 
 bitflags! {
+    /**
+     * Remaining available operations
+     *
+     * The first operation is always an addition,
+     * the 3 remaining operation (substraction, multiply and division) are implemented as a bitflag
+     *
+     * Each flag represents a possible operation that needs to be tested
+     */
     #[derive(Debug, Clone, Copy, PartialEq)]
     struct Operator: u8 {
         const SUB = 1;
@@ -37,7 +46,7 @@ impl Operator {
                 }
                 a.checked_div(b)
             }
-            _ => panic!("Invalid operator {self:?}"),
+            _ => panic!("Invalid bitflag {self:?}"),
         }
     }
 }
@@ -52,18 +61,4 @@ pub fn char_to_num(c: char) -> Option<u32> {
 
 pub fn num_to_char(num: u32) -> char {
     char::from_u32('A' as u32 - 1 + num).unwrap()
-}
-
-#[derive(PartialEq)]
-pub enum Cypher {
-    Numeric([u32; 4]),
-    Text([char; 4]),
-}
-impl Display for Cypher {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Cypher::Numeric([a, b, c, d]) => write!(f, "{a} {b} {c} {d}"),
-            Cypher::Text([a, b, c, d]) => write!(f, "{a}{b}{c}{d}"),
-        }
-    }
 }

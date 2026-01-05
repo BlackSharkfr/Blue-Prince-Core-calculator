@@ -114,7 +114,7 @@ impl App {
                             KeyCode::Right => self.encrypt.prompt.event_right(),
                             KeyCode::Home => self.encrypt.prompt.event_home(),
                             KeyCode::End => self.encrypt.prompt.event_end(),
-                            KeyCode::Enter => self.encrypt.process_input(),
+                            KeyCode::Enter => self.encrypt.input_submitted(),
                             KeyCode::PageUp => self.encrypt.previous_page(),
                             KeyCode::PageDown => self.encrypt.next_page(),
                             _ => (),

@@ -5,7 +5,8 @@ use ratatui::{
 
 use crate::{
     calculator::{
-        decryptor::{DecryptError, LEN_DIGITS, decrypt_numbers, decrypt_word},
+        CORE_LENGTH,
+        decryptor::{DecryptError, decrypt_numbers, decrypt_word},
         num_to_char,
     },
     ui::Prompt,
@@ -133,9 +134,9 @@ fn process_input(input: &str) -> DecryptQuery {
 
     let mut decrypt_query = DecryptQuery::new(input.trim());
     match (is_digits, is_alphabetic) {
-        (true, false) if words.len() == LEN_DIGITS => {
+        (true, false) if words.len() == CORE_LENGTH => {
             // 4 numbers
-            let mut numbers = [0; LEN_DIGITS];
+            let mut numbers = [0; CORE_LENGTH];
             for (idx, word) in words.into_iter().enumerate() {
                 let Ok(num) = word.parse::<u32>() else {
                     decrypt_query.push_error(format!("Failed to parse number '{word}'"));

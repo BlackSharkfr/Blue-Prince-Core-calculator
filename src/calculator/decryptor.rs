@@ -1,13 +1,11 @@
-use crate::calculator::{Operator, char_to_num};
-
-pub const LEN_DIGITS: usize = 4;
+use crate::calculator::{CORE_LENGTH, Operator, char_to_num};
 
 pub fn decrypt_word(input: &str) -> Result<u32, DecryptError> {
-    if input.len() != LEN_DIGITS {
+    if input.len() != CORE_LENGTH {
         return Err(DecryptError::InvalidLen);
     }
 
-    let mut numbers = [0; LEN_DIGITS];
+    let mut numbers = [0; CORE_LENGTH];
     for (index, c) in input.char_indices().take(numbers.len()) {
         let n = char_to_num(c).ok_or(DecryptError::InvalidChar)?;
         numbers[index] = n;
@@ -16,7 +14,7 @@ pub fn decrypt_word(input: &str) -> Result<u32, DecryptError> {
     decrypt_numbers(numbers)
 }
 
-pub fn decrypt_numbers(numbers: [u32; LEN_DIGITS]) -> Result<u32, DecryptError> {
+pub fn decrypt_numbers(numbers: [u32; CORE_LENGTH]) -> Result<u32, DecryptError> {
     decrypt_recursive(numbers[0], &numbers[1..], Operator::all()).ok_or(DecryptError::NoSolution)
 }
 
