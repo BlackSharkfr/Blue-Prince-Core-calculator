@@ -40,7 +40,8 @@ impl Decrypt {
         ])
         .areas(frame.area());
 
-        let header = Line::from(vec!["Blue Prince".bold().blue(), " - Decrypt".bold()]).centered();
+        let header =
+            Line::from(vec!["Blue Prince".bold().blue(), " - Core Decrypt".bold()]).centered();
         header.render(title_bar, frame.buffer_mut());
 
         let history_block = Block::bordered()
@@ -272,7 +273,7 @@ impl DecryptQuery {
         let text = self
             .cores
             .iter()
-            .map(|core| match core.and_then(|num| num_to_char(num)) {
+            .map(|core| match core.and_then(num_to_char) {
                 Some(c) => Span::from(c.to_string()).green(),
                 None => {
                     let span = Span::from("?");

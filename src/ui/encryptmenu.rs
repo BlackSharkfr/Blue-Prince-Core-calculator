@@ -36,9 +36,9 @@ impl Encrypt {
         ])
         .areas(frame.area());
 
-        Line::from(vec!["Blue Prince".bold().blue(), " - Encrypt".bold()])
-            .centered()
-            .render(title_bar, frame.buffer_mut());
+        let header =
+            Line::from(vec!["Blue Prince".bold().blue(), " - Core Encrypt".bold()]).centered();
+        header.render(title_bar, frame.buffer_mut());
 
         let block_title = match &self.results {
             Some(Ok(results)) => format!(" Possible encryptions for : '{}' ", results.input),
