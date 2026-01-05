@@ -1,8 +1,11 @@
 use ratatui::{
+    crossterm::event::{Event, KeyCode, KeyEventKind},
     prelude::*,
     symbols::border,
     widgets::{Block, ListDirection, ListState, Padding},
 };
+
+use crate::ui::{App, Mode};
 
 pub struct MainMenu {
     pub state: ListState,
@@ -56,5 +59,23 @@ impl MainMenu {
         ])
         .centered()
         .render(instructions_bar, frame.buffer_mut());
+    }
+}
+
+pub fn handle_events(app: &mut App, event: Event) {
+    match event {
+        Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
+            KeyCode::Up => app.main_menu.state.select_previous(),
+            KeyCode::Down => app.main_menu.state.select_next(),
+            KeyCode::Enter => match app.main_menu.state.selected() {
+                Some(0) => app.change_mode(Mode::Decrypt),
+                Some(1) => app.change_mode(Mode::Encrypt),
+                Some(2) => app.quit = true,
+                _ => app.main_menu.state.select_first(),
+            },
+            KeyCode::Esc => app.quit = true,
+            _ => (),
+        },
+        _ => (),
     }
 }

@@ -1,4 +1,5 @@
 use ratatui::{
+    crossterm::event::{Event, KeyCode, KeyEventKind},
     prelude::*,
     widgets::{Block, Padding, Row, Table, TableState},
 };
@@ -7,9 +8,9 @@ use crate::{
     calculator::{
         CORE_LENGTH,
         decryptor::{DecryptError, decrypt_numbers, decrypt_word},
-        num_to_char,
+        num_to_char_unchecked,
     },
-    ui::Prompt,
+    ui::{App, Mode, Prompt},
 };
 
 #[derive(Default)]
@@ -200,7 +201,7 @@ impl DecryptQuery {
         for result in &self.cores {
             match result {
                 Some(core @ 1..=26) => {
-                    text.push(num_to_char(*core));
+                    text.push(num_to_char_unchecked(*core));
                     numbers.push_str(&format!("{core}, "));
                 }
                 Some(core) => {
@@ -219,6 +220,26 @@ impl DecryptQuery {
         }
         output.push_span(Span::from(error_text).red());
         output
+    }
+}
+
+pub fn handle_events(app: &mut App, event: Event) {
+    match event {
+        Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
+            KeyCode::Esc => app.change_mode(Mode::MainMenu),
+            KeyCode::Char(c) => app.decrypt.prompt.event_char(c),
+            KeyCode::Delete => app.decrypt.prompt.event_delete(),
+            KeyCode::Backspace => app.decrypt.prompt.event_backspace(),
+            KeyCode::Left => app.decrypt.prompt.event_left(),
+            KeyCode::Right => app.decrypt.prompt.event_right(),
+            KeyCode::Up => app.decrypt.history_up(),
+            KeyCode::Down => app.decrypt.history_down(),
+            KeyCode::Home => app.decrypt.prompt.event_home(),
+            KeyCode::End => app.decrypt.prompt.event_end(),
+            KeyCode::Enter => app.decrypt.input_submitted(),
+            _ => (),
+        },
+        _ => (),
     }
 }
 

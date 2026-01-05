@@ -1,8 +1,9 @@
 use crate::{
     calculator::{CORE_LENGTH, encryptor::encrypt_letter},
-    ui::Prompt,
+    ui::{App, Mode, Prompt},
 };
 use ratatui::{
+    crossterm::event::{Event, KeyCode, KeyEventKind},
     prelude::*,
     widgets::{Block, Padding, Row, Table},
 };
@@ -87,10 +88,7 @@ impl Encrypt {
 
         Line::from(vec![
             " Input : ".into(),
-            "<Number>".bold().blue(),
-            " for raw numeric core, or ".into(),
             "<Letter>".blue().bold(),
-            " for cyphertext".into(),
             " | ".bold(),
             "<ENTER>".blue().bold(),
             " compute".into(),
@@ -133,5 +131,25 @@ impl Encrypt {
         let first_of_last_page =
             results.cyphers.len() - results.cyphers.len() % self.page_len as usize;
         self.page_start = usize::min(self.page_start + self.page_len as usize, first_of_last_page);
+    }
+}
+
+pub fn handle_events(app: &mut App, event: Event) {
+    match event {
+        Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
+            KeyCode::Esc => app.change_mode(Mode::MainMenu),
+            KeyCode::Char(c) => app.encrypt.prompt.event_char(c),
+            KeyCode::Delete => app.encrypt.prompt.event_delete(),
+            KeyCode::Backspace => app.encrypt.prompt.event_backspace(),
+            KeyCode::Left => app.encrypt.prompt.event_left(),
+            KeyCode::Right => app.encrypt.prompt.event_right(),
+            KeyCode::Home => app.encrypt.prompt.event_home(),
+            KeyCode::End => app.encrypt.prompt.event_end(),
+            KeyCode::Enter => app.encrypt.input_submitted(),
+            KeyCode::PageUp => app.encrypt.previous_page(),
+            KeyCode::PageDown => app.encrypt.next_page(),
+            _ => (),
+        },
+        _ => (),
     }
 }

@@ -1,45 +1,64 @@
-use crate::calculator::{CORE_LENGTH, Operator, char_to_num};
+use crate::calculator::{CORE_LENGTH, Operation, char_to_num};
 
-pub fn decrypt_word(input: &str) -> Result<u32, DecryptError> {
-    if input.len() != CORE_LENGTH {
-        return Err(DecryptError::InvalidLen);
+/**
+    Computes the numeric core from the input 4-letter `word`
+
+    Input `word` must be a 4 alphabetic character string.
+    Both uppercase and lowercase are allowed and produce the same result
+
+    # Errors
+    - Invalid input
+    - No solution found
+*/
+pub fn decrypt_word(word: &str) -> Result<u32, DecryptError> {
+    if word.len() != CORE_LENGTH {
+        return Err(DecryptError::InputLen);
     }
 
     let mut numbers = [0; CORE_LENGTH];
-    for (index, c) in input.char_indices().take(numbers.len()) {
-        let n = char_to_num(c).ok_or(DecryptError::InvalidChar)?;
+    for (index, c) in word.char_indices().take(numbers.len()) {
+        let n = char_to_num(c).ok_or(DecryptError::InputChar)?;
         numbers[index] = n;
     }
 
     decrypt_numbers(numbers)
 }
 
+/**
+    Computes the numeric core from the 4 input `numbers`
+
+    # Errors
+    - No solution found
+*/
 pub fn decrypt_numbers(numbers: [u32; CORE_LENGTH]) -> Result<u32, DecryptError> {
-    decrypt_recursive(numbers[0], &numbers[1..], Operator::all()).ok_or(DecryptError::NoSolution)
+    let first = numbers[0];
+    let remaining_3 = &numbers[1..];
+    decrypt_recursive(first, remaining_3, Operation::all()).ok_or(DecryptError::NoSolution)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
 pub enum DecryptError {
     #[display("Invalid input, expected 4 characters")]
-    InvalidLen,
+    InputLen,
     #[display("Invalid input, expected alphabetic character only")]
-    InvalidChar,
+    InputChar,
     #[display("No solution found")]
     NoSolution,
 }
 
-fn decrypt_recursive(acc: u32, numbers: &[u32], ops: Operator) -> Option<u32> {
-    let b = numbers.first()?;
+/**
+    Brute force decryption
+
+    Pulls the first remaining number and tries to apply it using every possible remaining `Operator`
+*/
+fn decrypt_recursive(acc: u32, numbers: &[u32], ops: Operation) -> Option<u32> {
+    let Some((first, remain)) = numbers.split_first() else {
+        return Some(acc);
+    };
     ops.iter()
         .filter_map(|op| {
-            op.apply(acc, *b).and_then(|acc| {
-                let remain = &numbers[1..];
-                if remain.is_empty() {
-                    Some(acc)
-                } else {
-                    decrypt_recursive(acc, &numbers[1..], ops.difference(op))
-                }
-            })
+            op.apply(acc, *first)
+                .and_then(|total| decrypt_recursive(total, remain, ops.difference(op)))
         })
         .min()
 }

@@ -1,5 +1,4 @@
 pub mod calculator;
-mod decrypt;
 pub mod ui;
 
 use crate::ui::App;
