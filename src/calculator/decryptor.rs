@@ -1,65 +1,36 @@
 use crate::calculator::{Operator, char_to_num};
 
-pub fn decrypt(input: &str) -> (Vec<Option<u32>>, Vec<String>) {
-    let cyphers = match input
-        .chars()
-        .all(|c| c.is_ascii_alphabetic() || c.is_whitespace())
-    {
-        false => {
-            // Single numeric core
-            vec![input]
-        }
-        true => {
-            // Cyphertext
-            input.split_ascii_whitespace().collect()
-        }
-    };
+pub const LEN_DIGITS: usize = 4;
 
-    let mut cores = Vec::new();
-    let mut errors = Vec::new();
-    for cypher in cyphers {
-        let Some(numbers) = parse_input(cypher) else {
-            errors.push("Invalid input".to_string());
-            cores.push(None);
-            continue;
-        };
-        match solve_recursive(numbers[0], &numbers[1..], Operator::all()) {
-            Some(core) => cores.push(Some(core)),
-            None => {
-                errors.push(format!("No solutions for {cypher:?}"));
-                cores.push(None)
-            }
-        }
+pub fn decrypt_word(input: &str) -> Result<u32, DecryptError> {
+    if input.len() != LEN_DIGITS {
+        return Err(DecryptError::InvalidLen);
     }
-    (cores, errors)
+
+    let mut numbers = [0; LEN_DIGITS];
+    for (index, c) in input.char_indices().take(numbers.len()) {
+        let n = char_to_num(c).ok_or(DecryptError::InvalidChar)?;
+        numbers[index] = n;
+    }
+
+    decrypt_numbers(numbers)
 }
 
-fn parse_input(str: &str) -> Option<[u32; 4]> {
-    let words = str.split_whitespace().collect::<Vec<_>>();
-    if words.len() == 4 {
-        let mut nums = [0; 4];
-        for (index, num) in nums.iter_mut().enumerate() {
-            *num = words.get(index).and_then(|s| s.parse().ok())?;
-        }
-        return Some(nums);
-    }
-    if words.len() != 1 {
-        return None;
-    }
-    let str = *words.first()?;
-    if str.len() != 4 {
-        return None;
-    }
-    let mut chars = str.chars();
-    let mut numbers = [0_u32; 4];
-    for num in &mut numbers {
-        let c = chars.next()?;
-        *num = char_to_num(c)?;
-    }
-    Some(numbers)
+pub fn decrypt_numbers(numbers: [u32; LEN_DIGITS]) -> Result<u32, DecryptError> {
+    decrypt_recursive(numbers[0], &numbers[1..], Operator::all()).ok_or(DecryptError::NoSolution)
 }
 
-fn solve_recursive(acc: u32, numbers: &[u32], ops: Operator) -> Option<u32> {
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
+pub enum DecryptError {
+    #[display("Invalid input, expected 4 characters")]
+    InvalidLen,
+    #[display("Invalid input, expected alphabetic character only")]
+    InvalidChar,
+    #[display("No solution found")]
+    NoSolution,
+}
+
+fn decrypt_recursive(acc: u32, numbers: &[u32], ops: Operator) -> Option<u32> {
     let b = numbers.first()?;
     ops.iter()
         .filter_map(|op| {
@@ -68,7 +39,7 @@ fn solve_recursive(acc: u32, numbers: &[u32], ops: Operator) -> Option<u32> {
                 if remain.is_empty() {
                     Some(acc)
                 } else {
-                    solve_recursive(acc, &numbers[1..], ops.difference(op))
+                    decrypt_recursive(acc, &numbers[1..], ops.difference(op))
                 }
             })
         })
@@ -80,29 +51,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn single_letter() {
-        assert_eq!(decrypt("PEAK"), (vec![Some(1)], Vec::new()));
-        assert_eq!(decrypt("TREE"), (vec![Some(2)], Vec::new()));
-        assert_eq!(decrypt("JOYA"), (vec![Some(5)], Vec::new()));
-        assert_eq!(decrypt("MAIL"), (vec![Some(9)], Vec::new()));
-        assert_eq!(decrypt("ROCK"), (vec![Some(11)], Vec::new()));
-        assert_eq!(decrypt("DATE"), (vec![Some(12)], Vec::new()));
-        assert_eq!(decrypt("WILL"), (vec![Some(14)], Vec::new()));
-        assert_eq!(decrypt("VASE"), (vec![Some(15)], Vec::new()));
-        assert_eq!(decrypt("WELL"), (vec![Some(18)], Vec::new()));
-        assert_eq!(decrypt("PIGS"), (vec![Some(19)], Vec::new()));
-        assert_eq!(decrypt("SAND"), (vec![Some(20)], Vec::new()));
-        assert_eq!(decrypt("CLAM"), (vec![Some(23)], Vec::new()));
+    fn known_letters() {
+        assert_eq!(decrypt_word("PEAK"), Ok(1));
+        assert_eq!(decrypt_word("TREE"), Ok(2));
+        assert_eq!(decrypt_word("JOYA"), Ok(5));
+        assert_eq!(decrypt_word("MAIL"), Ok(9));
+        assert_eq!(decrypt_word("ROCK"), Ok(11));
+        assert_eq!(decrypt_word("DATE"), Ok(12));
+        assert_eq!(decrypt_word("WILL"), Ok(14));
+        assert_eq!(decrypt_word("VASE"), Ok(15));
+        assert_eq!(decrypt_word("WELL"), Ok(18));
+        assert_eq!(decrypt_word("PIGS"), Ok(19));
+        assert_eq!(decrypt_word("SAND"), Ok(20));
+        assert_eq!(decrypt_word("CLAM"), Ok(23));
     }
 
     #[test]
-    fn multi_letter() {
-        assert_eq!(
-            decrypt("PIGS SAND MAIL DATE HEAD"),
-            (
-                vec![Some(19), Some(20), Some(9), Some(12), Some(12)],
-                Vec::new()
-            )
-        );
+    fn known_numbers() {
+        assert_eq!(decrypt_numbers([1000, 200, 11, 2]), Ok(53))
     }
 }

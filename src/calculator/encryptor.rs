@@ -13,6 +13,7 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
         return Err("Invalid input : expected a single character".to_string());
     }
 
+    todo!("Add guard to exclude numbers");
     let Some(target) = char_to_num(c) else {
         return Err("Invalid input : expected an alphabetic letter".to_string());
     };
@@ -54,12 +55,4 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
     results.dedup();
 
     Ok(results)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn letter() {
-        todo!()
-    }
 }

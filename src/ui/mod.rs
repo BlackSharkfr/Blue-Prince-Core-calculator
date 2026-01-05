@@ -94,7 +94,7 @@ impl App {
                             KeyCode::Down => self.decrypt.history_down(),
                             KeyCode::Home => self.decrypt.prompt.event_home(),
                             KeyCode::End => self.decrypt.prompt.event_end(),
-                            KeyCode::Enter => self.decrypt.process_input(),
+                            KeyCode::Enter => self.decrypt.input_submitted(),
                             _ => (),
                         }
                     }

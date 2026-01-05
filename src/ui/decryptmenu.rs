@@ -4,7 +4,10 @@ use ratatui::{
 };
 
 use crate::{
-    calculator::{decryptor::decrypt, num_to_char},
+    calculator::{
+        decryptor::{DecryptError, LEN_DIGITS, decrypt_numbers, decrypt_word},
+        num_to_char,
+    },
     ui::Prompt,
 };
 
@@ -97,35 +100,99 @@ impl Decrypt {
         self.history_table.scroll_down_by(1);
     }
 
-    pub fn process_input(&mut self) {
+    pub fn input_submitted(&mut self) {
         let Some(input) = self.prompt.event_enter() else {
             return;
         };
+        let input = input.trim();
+        if input.is_empty() {
+            return;
+        }
 
-        let (cores, errors) = decrypt(&input);
-        self.previous_queries.push(DecryptQuery {
-            input,
-            cores,
-            errors,
-        });
-
+        let decrypt_query = process_input(input);
+        self.previous_queries.push(decrypt_query);
         self.history_table.select_last();
     }
 }
 
+fn process_input(input: &str) -> DecryptQuery {
+    let mut is_digits = false;
+    let mut is_alphabetic = false;
+    let words = input
+        .split_whitespace()
+        .inspect(|str| {
+            for c in str.chars() {
+                if c.is_ascii_digit() {
+                    is_digits = true;
+                } else if c.is_ascii_alphabetic() {
+                    is_alphabetic = true;
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut decrypt_query = DecryptQuery::new(input.trim());
+    match (is_digits, is_alphabetic) {
+        (true, false) if words.len() == LEN_DIGITS => {
+            // 4 numbers
+            let mut numbers = [0; LEN_DIGITS];
+            for (idx, word) in words.into_iter().enumerate() {
+                let Ok(num) = word.parse::<u32>() else {
+                    decrypt_query.push_error(format!("Failed to parse number '{word}'"));
+                    continue;
+                };
+                numbers[idx] = num;
+            }
+            if decrypt_query.errors.is_empty() {
+                decrypt_query.push_result(decrypt_numbers(numbers));
+            }
+        }
+        (false, true) => {
+            // 1 or many words
+            for str in words {
+                decrypt_query.push_result(decrypt_word(str));
+            }
+        }
+        _ => decrypt_query
+            .push_error("Invalid characters : expected 4 numbers or 4-letter words".into()),
+    }
+
+    decrypt_query
+}
+
+#[derive(Debug, PartialEq, Eq)]
 struct DecryptQuery {
     input: String,
     cores: Vec<Option<u32>>,
     errors: Vec<String>,
 }
 impl DecryptQuery {
+    fn new(input: &str) -> Self {
+        DecryptQuery {
+            input: input.trim().to_string(),
+            cores: Vec::new(),
+            errors: Vec::new(),
+        }
+    }
+
+    fn push_core(&mut self, core: u32) {
+        self.cores.push(Some(core));
+    }
+    fn push_error(&mut self, error: String) {
+        self.cores.push(None);
+        self.errors.push(error);
+    }
+    fn push_result(&mut self, result: Result<u32, DecryptError>) {
+        match result {
+            Ok(core) => self.push_core(core),
+            Err(error) => self.push_error(error.to_string()),
+        }
+    }
+
     fn output_text(&self) -> Line<'_> {
         let mut error_text = String::new();
         if !self.errors.is_empty() {
-            error_text.push_str("Errors : ");
-            for error in &self.errors {
-                error_text.push_str(error.as_str());
-            }
+            error_text = format!("Errors : {}", self.errors.join(" "));
         }
         let mut text = String::new();
         let mut numbers = String::new();
@@ -151,5 +218,34 @@ impl DecryptQuery {
         }
         output.push_span(Span::from(error_text).red());
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn known_words() {
+        let input = " PIGS SAND\r\nMAIL DATE\tHEAD ";
+        let decrypt_query = process_input(input);
+        let expected = DecryptQuery {
+            input: input.trim().to_string(),
+            cores: vec![Some(19), Some(20), Some(9), Some(12), Some(12)],
+            errors: Vec::new(),
+        };
+        assert_eq!(decrypt_query, expected);
+    }
+
+    #[test]
+    fn known_numbers() {
+        let input = "1000 200 11 2";
+        let decript_query = process_input(input);
+        let expected = DecryptQuery {
+            input: input.to_string(),
+            cores: vec![Some(53)],
+            errors: Vec::new(),
+        };
+        assert_eq!(decript_query, expected)
     }
 }

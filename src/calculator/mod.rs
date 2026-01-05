@@ -44,7 +44,6 @@ impl Operator {
 
 pub fn char_to_num(c: char) -> Option<u32> {
     match c {
-        '0'..='9' => Some(c as u32 - '0' as u32),
         'a'..='z' => Some(1 + c as u32 - 'a' as u32),
         'A'..='Z' => Some(1 + c as u32 - 'A' as u32),
         _ => None,
