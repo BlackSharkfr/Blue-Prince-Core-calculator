@@ -39,6 +39,7 @@ pub fn encrypt_letter(c: char) -> Result<Vec<[char; 4]>, String> {
         })
         .collect::<Vec<_>>();
 
+    results.sort();
     results.dedup();
 
     Ok(results)
