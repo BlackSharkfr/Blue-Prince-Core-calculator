@@ -18,7 +18,7 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
     };
 
     let mut results = (1..=26_u32)
-        .map(|a| {
+        .flat_map(|a| {
             (1..=26_u32).flat_map(move |b| {
                 Operator::all().into_iter().flat_map(move |op| {
                     op.apply(a, b)
@@ -26,8 +26,7 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
                 })
             })
         })
-        .flatten()
-        .map(move |([a, b], b1, op_remain)| {
+        .flat_map(move |([a, b], b1, op_remain)| {
             (1..=26_u32).flat_map(move |c| {
                 op_remain.iter().flat_map(move |op| {
                     op.apply(b1, c)
@@ -35,8 +34,7 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
                 })
             })
         })
-        .flatten()
-        .map(|([a, b, c], c1, op_remain)| {
+        .flat_map(|([a, b, c], c1, op_remain)| {
             (1..=26_u32).flat_map(move |d| {
                 op_remain.iter().flat_map(move |op| {
                     op.apply(c1, d).and_then(|d1| {
@@ -51,10 +49,17 @@ pub fn encrypt_letter(input: &str) -> Result<Vec<Cypher>, String> {
                 })
             })
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     results.dedup();
 
     Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn letter() {
+        todo!()
+    }
 }

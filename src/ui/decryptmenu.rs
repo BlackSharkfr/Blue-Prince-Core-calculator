@@ -4,7 +4,7 @@ use ratatui::{
 };
 
 use crate::{
-    calculator::{decrypt::decrypt, num_to_char},
+    calculator::{decryptor::decrypt, num_to_char},
     ui::Prompt,
 };
 

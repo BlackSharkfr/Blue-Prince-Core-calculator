@@ -1,5 +1,5 @@
-pub mod decrypt;
-pub mod encrypt;
+pub mod decryptor;
+pub mod encryptor;
 
 use std::fmt::Display;
 
@@ -20,13 +20,13 @@ impl Operator {
                 if !self.difference(Self::SUB).is_empty() {
                     panic!("Invalid operator {self:?}")
                 }
-                return a.checked_sub(b);
+                a.checked_sub(b)
             }
             Self::MUL => {
                 if !self.difference(Self::MUL).is_empty() {
                     panic!("Invalid operator {self:?}")
                 }
-                return Some(a * b);
+                Some(a * b)
             }
             Self::DIV => {
                 if !self.difference(Self::DIV).is_empty() {
@@ -35,7 +35,7 @@ impl Operator {
                 if a.checked_rem(b) != Some(0) {
                     return None;
                 }
-                return a.checked_div(b);
+                a.checked_div(b)
             }
             _ => panic!("Invalid operator {self:?}"),
         }
@@ -47,7 +47,7 @@ pub fn char_to_num(c: char) -> Option<u32> {
         '0'..='9' => Some(c as u32 - '0' as u32),
         'a'..='z' => Some(1 + c as u32 - 'a' as u32),
         'A'..='Z' => Some(1 + c as u32 - 'A' as u32),
-        _ => return None,
+        _ => None,
     }
 }
 

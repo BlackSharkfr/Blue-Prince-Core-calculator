@@ -1,7 +1,7 @@
 use crate::{
     calculator::{
         Cypher,
-        encrypt::{encrypt_letter, encrypt_number},
+        encryptor::{encrypt_letter, encrypt_number},
     },
     ui::Prompt,
 };

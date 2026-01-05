@@ -1,5 +1,5 @@
-mod decrypt;
-mod encrypt;
+mod decryptmenu;
+mod encryptmenu;
 mod mainmenu;
 
 use ratatui::{
@@ -14,7 +14,7 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 
-use crate::ui::{decrypt::Decrypt, encrypt::Encrypt, mainmenu::MainMenu};
+use crate::ui::{decryptmenu::Decrypt, encryptmenu::Encrypt, mainmenu::MainMenu};
 
 #[derive(Default)]
 pub struct App {
