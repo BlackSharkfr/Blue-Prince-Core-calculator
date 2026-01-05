@@ -20,7 +20,7 @@ const PREVIOUS_QUERIES_MAX_LEN: usize = 128;
 /// Decrypt page state
 #[derive(Default)]
 pub struct Decrypt {
-    history: Vec<DecryptQuery>,
+    history: Vec<DecryptResult>,
     table_state: TableState,
     selected: Option<usize>,
     prompt: Prompt,
@@ -41,27 +41,27 @@ impl Decrypt {
         .areas(frame.area());
 
         let header =
-            Line::from(vec!["Blue Prince".bold().blue(), " - Core Decrypt".bold()]).centered();
+            Line::from_iter(["Blue Prince".bold().blue(), " - Core Decrypt".bold()]).centered();
         header.render(title_bar, frame.buffer_mut());
 
         let history_block = Block::bordered()
             .title(" Previous decryptions ")
             .padding(Padding::horizontal(1));
 
-        let max_query_width = self.history.iter().map(|query| query.input.len()).max();
+        let max_input_width = self.history.iter().map(|result| result.input.len()).max();
 
-        let table = match max_query_width {
+        let table = match max_input_width {
             None => Table::new([Row::default()], [Constraint::Fill(1)]),
             Some(width) => Table::new(
-                self.history.iter().enumerate().map(|(index, query)| {
+                self.history.iter().enumerate().map(|(index, result)| {
                     let style = if self.selected == Some(index) {
                         style::Modifier::REVERSED
                     } else {
                         Default::default()
                     };
-                    Row::new(vec![
-                        Text::from(query.input.clone()).italic(),
-                        Text::from(query.output_text()),
+                    Row::from_iter([
+                        Text::from(result.input.clone()).italic(),
+                        Text::from(result.output_text()),
                     ])
                     .style(style)
                 }),
@@ -82,20 +82,20 @@ impl Decrypt {
 
         self.prompt.draw(prompt_area, frame);
 
-        Line::from(vec![
+        Line::from_iter([
             " Input : ".into(),
             "<4 numbers>".bold().blue(),
-            " for raw numeric core, or ".into(),
+            " for core, or ".into(),
             "<Words>".blue().bold(),
-            " for cyphertext".into(),
+            " for text".into(),
             " | ".bold(),
+            "Compute ".into(),
             "<ENTER>".blue().bold(),
-            " compute".into(),
             " | ".bold(),
-            "Navigate history ".into(),
+            "Navigate ".into(),
             "<UP><DOWN>".blue().bold(),
             " | ".bold(),
-            "Back to main menu ".into(),
+            "Main menu ".into(),
             "<ESC> ".blue().bold(),
         ])
         .centered()
@@ -103,28 +103,28 @@ impl Decrypt {
     }
 
     fn history_up(&mut self) {
-        let query = match self.selected {
+        let result = match self.selected {
             None => {
-                let Some(query) = self.history.last() else {
+                let Some(result) = self.history.last() else {
                     return;
                 };
                 self.selected = Some(self.history.len() - 1);
                 self.table_state.select_last();
-                query
+                result
             }
             Some(index) => {
                 let Some(new_index) = index.checked_sub(1) else {
                     return;
                 };
-                let Some(query) = self.history.get(new_index) else {
+                let Some(result) = self.history.get(new_index) else {
                     return;
                 };
                 self.selected = Some(new_index);
                 self.table_state.select(Some(new_index));
-                query
+                result
             }
         };
-        self.prompt.input = query.input.clone();
+        self.prompt.input = result.input.clone();
         self.prompt.event_end();
     }
 
@@ -134,14 +134,14 @@ impl Decrypt {
         };
         let new_index = index + 1;
 
-        let Some(query) = self.history.get(new_index) else {
+        let Some(result) = self.history.get(new_index) else {
             self.selected = None;
             self.prompt.clear();
             return;
         };
         self.selected = Some(new_index);
         self.table_state.select(Some(new_index));
-        self.prompt.input = query.input.clone();
+        self.prompt.input = result.input.clone();
         self.prompt.event_end();
     }
 
@@ -156,16 +156,16 @@ impl Decrypt {
 
         self.selected = None;
 
-        let decrypt_query = process_input(input);
+        let result = process_input(input);
         if self.history.len() > PREVIOUS_QUERIES_MAX_LEN {
             self.history.remove(0);
         }
-        self.history.push(decrypt_query);
+        self.history.push(result);
         self.table_state.select_last();
     }
 }
 
-fn process_input(input: &str) -> DecryptQuery {
+fn process_input(input: &str) -> DecryptResult {
     let mut is_digits = false;
     let mut is_alphabetic = false;
     let words = input
@@ -181,57 +181,62 @@ fn process_input(input: &str) -> DecryptQuery {
         })
         .collect::<Vec<_>>();
 
-    let mut decrypt_query = DecryptQuery::new(input.trim());
+    let mut result: DecryptResult = DecryptResult::new(input.trim());
     match (is_digits, is_alphabetic) {
         (true, false) if words.len() == CORE_LENGTH => {
             // 4 numbers
             let mut numbers = [0; CORE_LENGTH];
             for (idx, word) in words.into_iter().enumerate() {
                 let Ok(num) = word.parse::<u32>() else {
-                    decrypt_query.push_error(format!("Failed to parse number '{word}'"));
+                    result.push_error(format!("Failed to parse number '{word}'"));
                     continue;
                 };
                 numbers[idx] = num;
             }
-            if decrypt_query.errors.is_empty() {
-                decrypt_query.push_result(decrypt_numbers(numbers));
+            if result.errors.is_empty() {
+                result.push_result(decrypt_numbers(numbers));
             }
         }
         (false, true) => {
             // 1 or many words
             for str in words {
-                decrypt_query.push_result(decrypt_word(str));
+                result.push_result(decrypt_word(str));
             }
         }
-        _ => decrypt_query
-            .push_error("Invalid characters : expected 4 numbers or 4-letter words".into()),
+        _ => result.push_error("Invalid characters : expected 4 numbers or 4-letter words".into()),
     }
 
-    decrypt_query
+    result
 }
 
+/// Record of a user's text input and it's decryption
 #[derive(Debug, PartialEq, Eq)]
-struct DecryptQuery {
+struct DecryptResult {
     input: String,
     cores: Vec<Option<u32>>,
     errors: Vec<String>,
 }
-impl DecryptQuery {
+impl DecryptResult {
     fn new(input: &str) -> Self {
-        DecryptQuery {
+        DecryptResult {
             input: input.trim().to_string(),
             cores: Vec::new(),
             errors: Vec::new(),
         }
     }
 
+    /// store a successful core
     fn push_core(&mut self, core: u32) {
         self.cores.push(Some(core));
     }
+
+    /// store an error
     fn push_error(&mut self, error: String) {
         self.cores.push(None);
         self.errors.push(error);
     }
+
+    /// automatically determine whether to store a core or an error
     fn push_result(&mut self, result: Result<u32, DecryptError>) {
         match result {
             Ok(core) => self.push_core(core),
@@ -328,24 +333,24 @@ mod tests {
     #[test]
     fn known_words() {
         let input = " PIGS SAND\r\nMAIL DATE\tHEAD ";
-        let decrypt_query = process_input(input);
-        let expected = DecryptQuery {
+        let result = process_input(input);
+        let expected = DecryptResult {
             input: input.trim().to_string(),
             cores: vec![Some(19), Some(20), Some(9), Some(12), Some(12)],
             errors: Vec::new(),
         };
-        assert_eq!(decrypt_query, expected);
+        assert_eq!(result, expected);
     }
 
     #[test]
     fn known_numbers() {
         let input = "1000 200 11 2";
-        let decript_query = process_input(input);
-        let expected = DecryptQuery {
+        let result = process_input(input);
+        let expected = DecryptResult {
             input: input.to_string(),
             cores: vec![Some(53)],
             errors: Vec::new(),
         };
-        assert_eq!(decript_query, expected)
+        assert_eq!(result, expected)
     }
 }

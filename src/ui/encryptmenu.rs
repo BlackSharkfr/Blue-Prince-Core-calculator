@@ -36,16 +36,20 @@ impl Encrypt {
         ])
         .areas(frame.area());
 
-        let header =
-            Line::from(vec!["Blue Prince".bold().blue(), " - Core Encrypt".bold()]).centered();
-        header.render(title_bar, frame.buffer_mut());
+        let title =
+            Line::from_iter(["Blue Prince".bold().blue(), " - Core Encrypt".bold()]).centered();
+        title.render(title_bar, frame.buffer_mut());
 
-        let block_title = match &self.results {
-            Some(Ok(results)) => format!(" Possible encryptions for : '{}' ", results.input),
-            _ => " Possible encryptions ".to_string(),
+        let results_title = match &self.results {
+            Some(Ok(results)) => Line::from_iter([
+                " Possible encryptions for : '".into(),
+                results.input.clone().blue(),
+                "' ".into(),
+            ]),
+            _ => " Enter a letter to compute ".into(),
         };
         let mut results_block = Block::bordered()
-            .title(block_title)
+            .title(results_title)
             .padding(Padding::horizontal(1));
 
         let table = match &mut self.results {
@@ -86,17 +90,17 @@ impl Encrypt {
 
         self.prompt.draw(prompt_area, frame);
 
-        Line::from(vec![
+        Line::from_iter([
             " Input : ".into(),
             "<Letter>".blue().bold(),
             " | ".bold(),
+            "Compute ".into(),
             "<ENTER>".blue().bold(),
-            " compute".into(),
             " | ".bold(),
-            "Navigate encryptions ".into(),
+            "Navigate ".into(),
             "<PAGE UP><PAGE DOWN>".blue().bold(),
             " | ".bold(),
-            "Back to main menu ".into(),
+            "Main menu ".into(),
             "<ESC> ".blue().bold(),
         ])
         .centered()

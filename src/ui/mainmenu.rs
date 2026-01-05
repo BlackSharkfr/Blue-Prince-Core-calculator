@@ -8,13 +8,12 @@ use ratatui::{
 use crate::ui::{App, Mode};
 
 pub struct MainMenu {
-    pub state: ListState,
+    pub list: ListState,
 }
 impl Default for MainMenu {
     fn default() -> Self {
-        let mut state = ListState::default();
-        state.select_first();
-        MainMenu { state }
+        let list = ListState::default().with_selected(Some(0));
+        MainMenu { list }
     }
 }
 
@@ -27,17 +26,17 @@ impl MainMenu {
         ])
         .areas(frame.area());
 
-        Line::from(vec![
+        let title = Line::from_iter([
             "Blue Prince".light_blue(),
             " - Numeric Core calculator".into(),
         ])
         .centered()
-        .bold()
-        .render(title_bar, frame.buffer_mut());
+        .bold();
+        title.render(title_bar, frame.buffer_mut());
 
         let list = ratatui::widgets::List::new(["Decrypt", "Encrypt", "Quit"])
             .highlight_symbol(">> ")
-            .highlight_style(Style::default().bold())
+            .highlight_style(style::Modifier::BOLD)
             .direction(ListDirection::TopToBottom)
             .block(
                 Block::bordered()
@@ -45,9 +44,9 @@ impl MainMenu {
                     .border_set(border::THICK)
                     .padding(Padding::horizontal(1)),
             );
-        StatefulWidget::render(list, menu_area, frame.buffer_mut(), &mut self.state);
+        StatefulWidget::render(list, menu_area, frame.buffer_mut(), &mut self.list);
 
-        Line::from(vec![
+        let instructions = Line::from_iter([
             " Navigate ".into(),
             "<UP><DOWN>".blue().bold(),
             " | ".bold(),
@@ -57,25 +56,34 @@ impl MainMenu {
             "Quit ".into(),
             "<ESC> ".blue().bold(),
         ])
-        .centered()
-        .render(instructions_bar, frame.buffer_mut());
+        .centered();
+        instructions.render(instructions_bar, frame.buffer_mut());
     }
 }
 
 pub fn handle_events(app: &mut App, event: Event) {
     match event {
         Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
-            KeyCode::Up => app.main_menu.state.select_previous(),
-            KeyCode::Down => app.main_menu.state.select_next(),
-            KeyCode::Enter => match app.main_menu.state.selected() {
-                Some(0) => app.change_mode(Mode::Decrypt),
-                Some(1) => app.change_mode(Mode::Encrypt),
-                Some(2) => app.quit = true,
-                _ => app.main_menu.state.select_first(),
+            KeyCode::Up => app.main_menu.list.select_previous(),
+            KeyCode::Down => app.main_menu.list.select_next(),
+            KeyCode::Enter => match app.main_menu.list.selected().map(Mode::from_menuselection) {
+                None => app.main_menu.list.select_first(),
+                Some(mode) => app.change_mode(mode),
             },
-            KeyCode::Esc => app.quit = true,
+            KeyCode::Esc => app.change_mode(Mode::Quit),
             _ => (),
         },
         _ => (),
+    }
+}
+
+impl Mode {
+    fn from_menuselection(index: usize) -> Mode {
+        match index {
+            0 => Mode::Decrypt,
+            1 => Mode::Encrypt,
+            2 => Mode::Quit,
+            other => unreachable!("Item {other} does not exist"),
+        }
     }
 }
