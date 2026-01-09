@@ -65,22 +65,31 @@ fn decrypt_recursive(acc: u32, numbers: &[u32], ops: Operation) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
 
     #[test]
     fn known_letters() {
-        assert_eq!(decrypt_word("PEAK"), Ok(1));
-        assert_eq!(decrypt_word("TREE"), Ok(2));
-        assert_eq!(decrypt_word("JOYA"), Ok(5));
-        assert_eq!(decrypt_word("MAIL"), Ok(9));
-        assert_eq!(decrypt_word("ROCK"), Ok(11));
-        assert_eq!(decrypt_word("DATE"), Ok(12));
-        assert_eq!(decrypt_word("WILL"), Ok(14));
-        assert_eq!(decrypt_word("VASE"), Ok(15));
-        assert_eq!(decrypt_word("WELL"), Ok(18));
-        assert_eq!(decrypt_word("PIGS"), Ok(19));
-        assert_eq!(decrypt_word("SAND"), Ok(20));
-        assert_eq!(decrypt_word("CLAM"), Ok(23));
+        let peak = "PEAK"
+            .chars()
+            .filter_map(char_to_num)
+            .collect_array()
+            .unwrap();
+        assert_eq!(decrypt_numbers(peak).ok(), char_to_num('A'));
+
+        assert_eq!(decrypt_word("PEAK").ok(), char_to_num('A'));
+        assert_eq!(decrypt_word("TREE").ok(), char_to_num('B'));
+        assert_eq!(decrypt_word("JOYA").ok(), char_to_num('E'));
+        assert_eq!(decrypt_word("MAIL").ok(), char_to_num('I'));
+        assert_eq!(decrypt_word("ROCK").ok(), char_to_num('K'));
+        assert_eq!(decrypt_word("DATE").ok(), char_to_num('L'));
+        assert_eq!(decrypt_word("WILL").ok(), char_to_num('N'));
+        assert_eq!(decrypt_word("VASE").ok(), char_to_num('O'));
+        assert_eq!(decrypt_word("WELL").ok(), char_to_num('R'));
+        assert_eq!(decrypt_word("PIGS").ok(), char_to_num('S'));
+        assert_eq!(decrypt_word("SAND").ok(), char_to_num('T'));
+        assert_eq!(decrypt_word("CLAM").ok(), char_to_num('W'));
     }
 
     #[test]

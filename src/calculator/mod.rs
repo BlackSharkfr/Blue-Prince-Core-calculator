@@ -78,3 +78,27 @@ pub fn num_to_char(num: u32) -> Option<char> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_char_to_num() {
+        assert_eq!(char_to_num('A'), Some(1));
+    }
+
+    #[test]
+    fn from_num_to_char() {
+        assert_eq!(num_to_char(1), Some('A'));
+    }
+
+    #[test]
+    fn round_trip() {
+        for c in 'A'..='Z' {
+            let num = char_to_num(c).unwrap();
+            let output = num_to_char(num).unwrap();
+            assert_eq!(c, output)
+        }
+    }
+}
