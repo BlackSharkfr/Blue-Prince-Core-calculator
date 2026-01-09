@@ -124,6 +124,7 @@ impl Encrypt {
         });
 
         self.results = Some(results);
+        self.page_start = 0;
     }
     fn previous_page(&mut self) {
         self.page_start = self.page_start.saturating_sub(self.page_len as usize);
