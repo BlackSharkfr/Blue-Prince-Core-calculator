@@ -1,11 +1,10 @@
-pub mod calculator;
-pub mod ui;
+mod calculator;
+mod cli;
+mod ui;
 
-use crate::ui::App;
-
-fn main() -> std::io::Result<()> {
-    let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal);
-    ratatui::restore();
-    app_result
+fn main() -> Result<(), String> {
+    match cli::parse_command() {
+        Some(command) => cli::run(command),
+        None => ui::run().map_err(|e| e.to_string()),
+    }
 }

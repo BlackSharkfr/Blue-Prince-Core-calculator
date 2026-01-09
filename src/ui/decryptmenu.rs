@@ -8,8 +8,7 @@ use ratatui::{
 
 use crate::{
     calculator::{
-        CORE_LENGTH,
-        decryptor::{DecryptError, decrypt_numbers, decrypt_word},
+        decryptor::{DecryptError, DecryptInput, decrypt_numbers, decrypt_word},
         num_to_char,
     },
     ui::{App, Mode, Prompt},
@@ -167,45 +166,43 @@ impl Decrypt {
 }
 
 fn process_input(input: &str) -> DecryptResult {
-    let mut is_digits = false;
-    let mut is_alphabetic = false;
-    let words = input
-        .split_whitespace()
-        .inspect(|str| {
-            for c in str.chars() {
-                if c.is_ascii_digit() {
-                    is_digits = true;
-                } else if c.is_ascii_alphabetic() {
-                    is_alphabetic = true;
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-
     let mut result: DecryptResult = DecryptResult::new(input.trim());
-    match (is_digits, is_alphabetic) {
-        (true, false) if words.len() == CORE_LENGTH => {
-            // 4 numbers
-            let mut numbers = [0; CORE_LENGTH];
-            for (idx, word) in words.into_iter().enumerate() {
-                let Ok(num) = word.parse::<u32>() else {
-                    result.push_error(format!("Failed to parse number '{word}'"));
-                    continue;
-                };
-                numbers[idx] = num;
-            }
-            if result.errors.is_empty() {
-                result.push_result(decrypt_numbers(numbers));
+
+    match DecryptInput::parse(input) {
+        Err(e) => result.push_error(e.to_string()),
+        Ok(DecryptInput::Numbers(numbers)) => {
+            result.push_result(decrypt_numbers(numbers));
+        }
+        Ok(DecryptInput::Words(words)) => {
+            for word in words {
+                result.push_result(decrypt_word(word));
             }
         }
-        (false, true) => {
-            // 1 or many words
-            for str in words {
-                result.push_result(decrypt_word(str));
-            }
-        }
-        _ => result.push_error("Invalid characters : expected 4 numbers or 4-letter words".into()),
     }
+
+    // match (is_digits, is_alphabetic) {
+    //     (true, false) if words.len() == CORE_LENGTH => {
+    //         // 4 numbers
+    //         let mut numbers = [0; CORE_LENGTH];
+    //         for (idx, word) in words.into_iter().enumerate() {
+    //             let Ok(num) = word.parse::<u32>() else {
+    //                 result.push_error(format!("Failed to parse number '{word}'"));
+    //                 continue;
+    //             };
+    //             numbers[idx] = num;
+    //         }
+    //         if result.errors.is_empty() {
+    //             result.push_result(decrypt_numbers(numbers));
+    //         }
+    //     }
+    //     (false, true) => {
+    //         // 1 or many words
+    //         for str in words {
+    //             result.push_result(decrypt_word(str));
+    //         }
+    //     }
+    //     _ => result.push_error("Invalid characters : expected 4 numbers or 4-letter words".into()),
+    // }
 
     result
 }
