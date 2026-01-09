@@ -14,9 +14,16 @@ use ratatui::{
 
 use crate::ui::{decryptmenu::Decrypt, encryptmenu::Encrypt, mainmenu::MainMenu};
 
+pub fn run() -> std::io::Result<()> {
+    let mut terminal = ratatui::init();
+    let app_result = App::default().run(&mut terminal);
+    ratatui::restore();
+    app_result
+}
+
 /// Application state
 #[derive(Default)]
-pub struct App {
+struct App {
     /// States of pages
     main_menu: MainMenu,
     decrypt: Decrypt,
@@ -36,7 +43,7 @@ enum Mode {
 }
 
 impl App {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
+    fn run(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
         while self.mode != Mode::Quit {
             terminal.draw(|frame| self.draw(frame))?;
             let event = event::read()?;

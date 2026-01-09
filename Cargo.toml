@@ -1,5 +1,6 @@
 [package]
 name = "blueprince-numeric-core"
+description = "A program to solve puzzles from the video game Blue Prince"
 version = "1.1.0"
 edition = "2024"
 authors = ["BlackShark <blacksharkfr@yahoo.fr>"]
@@ -7,8 +8,9 @@ license = "MIT"
 
 [dependencies]
 bitflags = "2.10.0"
+clap = {version = "4.5.54", features = ["derive"]}
 crossterm = "0.29.0"
-derive_more = { version = "2.1.1", features = ["display"] }
+derive_more = { version = "2.1.1", features = ["display", "error"] }
 itertools = "0.14.0"
 ratatui = "0.30.0"
 rayon = "1.11.0"

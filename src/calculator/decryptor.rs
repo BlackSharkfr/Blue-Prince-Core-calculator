@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::calculator::{CORE_LENGTH, Operation, char_to_num};
 
 /**
@@ -36,14 +38,54 @@ pub fn decrypt_numbers(numbers: [u32; CORE_LENGTH]) -> Result<u32, DecryptError>
     decrypt_recursive(first, remaining_3, Operation::all()).ok_or(DecryptError::NoSolution)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display, derive_more::Error)]
 pub enum DecryptError {
-    #[display("Invalid input, expected 4 characters")]
+    #[display("Invalid characters, expected alphabetic words or numbers")]
+    InputEmpty,
+    #[display("Invalid length, expected 4 characters")]
     InputLen,
-    #[display("Invalid input, expected alphabetic character only")]
+    #[display("Invalid characters, expected alphabetic character only")]
     InputChar,
+    #[display("Invalid input, found mixed words and numbers")]
+    InputMixed,
     #[display("No solution found")]
     NoSolution,
+}
+
+pub enum DecryptInput<'a> {
+    Words(Vec<&'a str>),
+    Numbers([u32; CORE_LENGTH]),
+}
+impl DecryptInput<'_> {
+    pub fn parse(input: &str) -> Result<DecryptInput<'_>, DecryptError> {
+        let mut is_digits = false;
+        let mut is_alphabetic = false;
+        let words = input
+            .split_whitespace()
+            .inspect(|str| {
+                for c in str.chars() {
+                    if c.is_ascii_digit() {
+                        is_digits = true;
+                    } else if c.is_ascii_alphabetic() {
+                        is_alphabetic = true;
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        match (is_digits, is_alphabetic) {
+            (true, false) if words.len() == CORE_LENGTH => words
+                .into_iter()
+                .filter_map(|word| word.parse::<u32>().ok())
+                .collect_array()
+                .map(DecryptInput::Numbers)
+                .ok_or(DecryptError::InputLen),
+            (true, false) => Err(DecryptError::InputLen),
+            (false, true) => Ok(DecryptInput::Words(words)),
+            (false, false) => Err(DecryptError::InputEmpty),
+            (true, true) => Err(DecryptError::InputMixed),
+        }
+    }
 }
 
 /**
