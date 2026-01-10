@@ -1,7 +1,7 @@
 [package]
 name = "blueprince-numeric-core"
 description = "A program to solve puzzles from the video game Blue Prince"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 authors = ["BlackShark <blacksharkfr@yahoo.fr>"]
 license = "MIT"

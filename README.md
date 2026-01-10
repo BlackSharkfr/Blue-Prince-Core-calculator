@@ -19,5 +19,34 @@ Enjoy!
 - Decrypt a numeric core from 4-letter words
 - Encrypt all possible words that match a character
 
+# Usage
+Can be used either via a Terminal UI (see screenshots), or via CLI.
+
+## Terminal UI
+Launch the app in a terminal without arguments  
+```
+corecalculator.exe
+```
+
+## CLI
+
+### Decrypt
+```
+corecalculator.exe decode HEAT
+corecalculator.exe decode "HEAT TICK DATE"
+corecalculator.exe decode "34 67 22 4"
+
+```
+
+### Encrypt
+
+```
+corecalculator.exe encode H
+```
+Encrypt output tends to be very long (5000+ lines). It it recommended to pipe the output into a file or an other program
+```
+corecalculator.exe encode J > file.txt
+```
+
 # Licence
 MIT : do what you want with it. No warranty
