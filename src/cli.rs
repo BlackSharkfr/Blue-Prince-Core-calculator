@@ -6,77 +6,64 @@ use crate::calculator::{
     num_to_char,
 };
 
-/**
-    Blue Prince numeric core calculator
-
-    A program to solve puzzles in the video game 'Blue Prince'.
-    Usage without options runs the Terminal UI mode.
-*/
+/// Blue Prince numeric core calculator
+///
+/// A program to solve puzzles in the video game 'Blue Prince'
+/// Usage without command uses Terminal UI mode by default
 #[derive(Parser, Debug)]
-#[command(version, about, long_about)]
+#[command(version, about, long_about, verbatim_doc_comment)]
 pub struct Args {
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
 
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    /// Runs the app in Terminal-UI mode (default)
-    UI,
-    /// Computes every 4-letter word for a given letter
-    Encode {
-        /**
-            Alphabetic letter in the range [A-Z] or [a-z]
-
-            examples
-
-            encode D
-
-            encode N
-
-            Tip : outputs tend to be long, it is recommended to pipe this command into a file
-
-            encode L > file.txt
-        */
-        #[arg(value_name = "LETTER")]
-        encode: char,
-    },
-    /// Computes numeric cores from a given cyphertext.
-    Decode {
-        /**
-            Can be either :
-
-            - WORDS : one or more 4-letter words (case insensitive) separated by spaces.
-
-            - 4-NUMBERS : 4 numbers separated by spaces.
-
-                examples
-
-                decode "CLAM tell FIND"
-
-                decode "156 21 9 7"
-        */
-        #[arg(value_name = "WORDS or 4-NUMBERS")]
-        decode: String,
-    },
+pub fn parse_command() -> Option<Commands> {
+    Args::parse().command
 }
 
-pub fn parse_command() -> Option<Commands> {
-    match Args::parse().command {
-        None | Some(Commands::UI { .. }) => None,
-        Some(other) => Some(other),
-    }
+#[derive(Subcommand, Debug, Default)]
+
+pub enum Commands {
+    /// Runs the app in Terminal-UI mode. Used by default when no command is provided
+    #[default]
+    UI,
+    /// Computes every 4-letter word for a given letter
+    #[command(name = "encode")]
+    Encrypt {
+        /// Alphabetic letter in the range [A-Z] or [a-z]
+        /// Examples:
+        ///     encode D   
+        ///     encode N
+        ///
+        /// Tip: output tend to be long (2000~6000 lines), it is recommended to pipe the output into a file
+        ///     encode L > file.txt
+        #[arg(value_name = "LETTER", verbatim_doc_comment)]
+        c: char,
+    },
+    /// Computes numeric cores from a given cyphertext
+    #[command(name = "decode")]
+    Decrypt {
+        /// Can be either:
+        ///     <WORDS>       one or more 4-letter words (case insensitive) separated by spaces
+        ///     <4-NUMBERS>   4 numbers separated by spaces
+        ///
+        /// Examples:
+        ///     decode "CLAM tell FIND"
+        ///     decode "156 21 9 7
+        #[arg(value_name = "WORDS or 4-NUMBERS", verbatim_doc_comment)]
+        str: String,
+    },
 }
 
 pub fn run(command: Commands) -> Result<(), String> {
     match command {
-        Commands::UI { .. } => Ok(()),
-        Commands::Encode { encode } => encode_char(encode),
-        Commands::Decode { decode } => decode_string(&decode),
+        Commands::UI => Ok(()),
+        Commands::Encrypt { c } => encrypt(c),
+        Commands::Decrypt { str } => decrypt(&str),
     }
 }
 
-fn encode_char(c: char) -> Result<(), String> {
+fn encrypt(c: char) -> Result<(), String> {
     let cores = encrypt_letter(c)?;
     for core in cores {
         println!("{}{}{}{}", core[0], core[1], core[2], core[3])
@@ -84,7 +71,7 @@ fn encode_char(c: char) -> Result<(), String> {
     Ok(())
 }
 
-fn decode_string(input: &str) -> Result<(), String> {
+fn decrypt(input: &str) -> Result<(), String> {
     let input = DecryptInput::parse(input).map_err(|e| e.to_string())?;
     match input {
         DecryptInput::Numbers(numbers) => {
