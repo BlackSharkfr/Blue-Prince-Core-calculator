@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use itertools::Itertools;
 
 use crate::calculator::{CORE_LENGTH, Operation, char_to_num};
@@ -14,14 +16,14 @@ use crate::calculator::{CORE_LENGTH, Operation, char_to_num};
 */
 pub fn decrypt_word(word: &str) -> Result<u32, DecryptError> {
     if word.len() != CORE_LENGTH {
-        return Err(DecryptError::InputLen);
+        return Err(DecryptError::InputWordLen);
     }
 
-    let mut numbers = [0; CORE_LENGTH];
-    for (index, c) in word.char_indices().take(numbers.len()) {
-        let n = char_to_num(c).ok_or(DecryptError::InputChar)?;
-        numbers[index] = n;
-    }
+    let numbers = word
+        .chars()
+        .filter_map(char_to_num)
+        .collect_array()
+        .ok_or(DecryptError::InputLetter)?;
 
     decrypt_numbers(numbers)
 }
@@ -42,27 +44,31 @@ pub fn decrypt_numbers(numbers: [u32; CORE_LENGTH]) -> Result<u32, DecryptError>
 pub enum DecryptError {
     #[display("Invalid characters, expected alphabetic words or numbers")]
     InputEmpty,
-    #[display("Invalid length, expected 4 characters")]
-    InputLen,
-    #[display("Invalid characters, expected alphabetic character only")]
-    InputChar,
-    #[display("Invalid input, found mixed words and numbers")]
+    #[display("Invalid length, expected 4 character words")]
+    InputWordLen,
+    #[display("Invalid length, expected 4 distinct numbers")]
+    InputNumsLen,
+    #[display("Invalid character, expected alphabetic character")]
+    InputLetter,
+    #[display("Found words mixed with numbers")]
     InputMixed,
     #[display("No solution found")]
     NoSolution,
 }
 
-pub enum DecryptInput<'a> {
-    Words(Vec<&'a str>),
+#[derive(Debug, Clone)]
+pub enum DecryptInput {
+    Words(Vec<String>),
     Numbers([u32; CORE_LENGTH]),
 }
-impl DecryptInput<'_> {
-    pub fn parse(input: &str) -> Result<DecryptInput<'_>, DecryptError> {
+impl FromStr for DecryptInput {
+    type Err = DecryptError;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut is_digits = false;
         let mut is_alphabetic = false;
         let words = input
             .split_whitespace()
-            .inspect(|str| {
+            .map(|str| {
                 for c in str.chars() {
                     if c.is_ascii_digit() {
                         is_digits = true;
@@ -70,17 +76,22 @@ impl DecryptInput<'_> {
                         is_alphabetic = true;
                     }
                 }
+                str.to_string()
             })
             .collect::<Vec<_>>();
 
         match (is_digits, is_alphabetic) {
-            (true, false) if words.len() == CORE_LENGTH => words
-                .into_iter()
-                .filter_map(|word| word.parse::<u32>().ok())
-                .collect_array()
-                .map(DecryptInput::Numbers)
-                .ok_or(DecryptError::InputLen),
-            (true, false) => Err(DecryptError::InputLen),
+            (true, false) => {
+                if words.len() != CORE_LENGTH {
+                    return Err(DecryptError::InputNumsLen);
+                }
+                words
+                    .into_iter()
+                    .filter_map(|word| word.parse::<u32>().ok())
+                    .collect_array()
+                    .map(DecryptInput::Numbers)
+                    .ok_or(DecryptError::InputNumsLen)
+            }
             (false, true) => Ok(DecryptInput::Words(words)),
             (false, false) => Err(DecryptError::InputEmpty),
             (true, true) => Err(DecryptError::InputMixed),
@@ -107,19 +118,10 @@ fn decrypt_recursive(acc: u32, numbers: &[u32], ops: Operation) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
-
     use super::*;
 
     #[test]
     fn known_letters() {
-        let peak = "PEAK"
-            .chars()
-            .filter_map(char_to_num)
-            .collect_array()
-            .unwrap();
-        assert_eq!(decrypt_numbers(peak).ok(), char_to_num('A'));
-
         assert_eq!(decrypt_word("PEAK").ok(), char_to_num('A'));
         assert_eq!(decrypt_word("TREE").ok(), char_to_num('B'));
         assert_eq!(decrypt_word("JOYA").ok(), char_to_num('E'));
@@ -132,6 +134,17 @@ mod tests {
         assert_eq!(decrypt_word("PIGS").ok(), char_to_num('S'));
         assert_eq!(decrypt_word("SAND").ok(), char_to_num('T'));
         assert_eq!(decrypt_word("CLAM").ok(), char_to_num('W'));
+    }
+
+    #[test]
+    fn equivalence_numbers_and_letters() {
+        let numbers = [
+            char_to_num('P').unwrap(),
+            char_to_num('E').unwrap(),
+            char_to_num('A').unwrap(),
+            char_to_num('K').unwrap(),
+        ];
+        assert_eq!(decrypt_numbers(numbers), decrypt_word("PEAK"));
     }
 
     #[test]

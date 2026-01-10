@@ -1,6 +1,6 @@
 use crate::{
     calculator::{CORE_LENGTH, encryptor::encrypt_letter},
-    ui::{App, Mode, Prompt},
+    ui::{App, Mode, widgets::Prompt},
 };
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEventKind},
@@ -10,7 +10,7 @@ use ratatui::{
 
 #[derive(Default)]
 pub struct Encrypt {
-    results: Option<Result<EncryptResults, String>>,
+    results: Option<EncryptResults>,
     page_start: usize,
     page_len: u16,
     prompt: Prompt,
@@ -41,12 +41,12 @@ impl Encrypt {
         title.render(title_bar, frame.buffer_mut());
 
         let results_title = match &self.results {
-            Some(Ok(results)) => Line::from_iter([
+            Some(results) => Line::from_iter([
                 " Possible encryptions for : '".into(),
                 results.input.clone().blue(),
                 "' ".into(),
             ]),
-            _ => " Enter a letter to compute ".into(),
+            None => " Enter a letter to compute ".into(),
         };
         let mut results_block = Block::bordered()
             .title(results_title)
@@ -54,8 +54,7 @@ impl Encrypt {
 
         let table = match &mut self.results {
             None => Table::default(),
-            Some(Err(e)) => Table::new([Row::new([e.as_str()])], [Constraint::Fill(1)]),
-            Some(Ok(results)) => {
+            Some(results) => {
                 let col_width = CORE_LENGTH as u16 + 2;
                 let table_rows = u16::max(1, results_area.height.saturating_sub(2));
                 let table_cols = u16::max(1, results_area.width.saturating_sub(2) / col_width);
@@ -108,29 +107,22 @@ impl Encrypt {
     }
 
     fn input_submitted(&mut self) {
-        let Some(input) = self.prompt.event_enter() else {
+        let Some(input) = self.prompt.submit() else {
             return;
         };
-        let input = input.trim();
-        if input.len() != 1 {
-            return;
-        }
-        let Some(c) = input.chars().next().filter(|c| c.is_ascii_alphabetic()) else {
+        let Ok(cyphers) = input.parse().map(encrypt_letter) else {
             return;
         };
-        let results = encrypt_letter(c).map(|cyphers| EncryptResults {
-            input: input.to_string(),
-            cyphers,
-        });
-
-        self.results = Some(results);
+        self.results = Some(EncryptResults { input, cyphers });
         self.page_start = 0;
     }
+
     fn previous_page(&mut self) {
         self.page_start = self.page_start.saturating_sub(self.page_len as usize);
     }
+
     fn next_page(&mut self) {
-        let Some(Ok(results)) = &mut self.results else {
+        let Some(results) = &mut self.results else {
             return;
         };
         let first_of_last_page =
@@ -143,13 +135,13 @@ pub fn handle_events(app: &mut App, event: Event) {
     match event {
         Event::Key(key_event) if key_event.kind == KeyEventKind::Press => match key_event.code {
             KeyCode::Esc => app.change_mode(Mode::MainMenu),
-            KeyCode::Char(c) => app.encrypt.prompt.event_char(c),
-            KeyCode::Delete => app.encrypt.prompt.event_delete(),
-            KeyCode::Backspace => app.encrypt.prompt.event_backspace(),
-            KeyCode::Left => app.encrypt.prompt.event_left(),
-            KeyCode::Right => app.encrypt.prompt.event_right(),
-            KeyCode::Home => app.encrypt.prompt.event_home(),
-            KeyCode::End => app.encrypt.prompt.event_end(),
+            KeyCode::Char(c) => app.encrypt.prompt.input_char(c),
+            KeyCode::Delete => app.encrypt.prompt.delete_right(),
+            KeyCode::Backspace => app.encrypt.prompt.delete_left(),
+            KeyCode::Left => app.encrypt.prompt.cursor_left(),
+            KeyCode::Right => app.encrypt.prompt.cursor_right(),
+            KeyCode::Home => app.encrypt.prompt.cursor_start(),
+            KeyCode::End => app.encrypt.prompt.cursor_end(),
             KeyCode::Enter => app.encrypt.input_submitted(),
             KeyCode::PageUp => app.encrypt.previous_page(),
             KeyCode::PageDown => app.encrypt.next_page(),

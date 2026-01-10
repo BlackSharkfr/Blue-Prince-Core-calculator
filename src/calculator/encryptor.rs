@@ -1,20 +1,13 @@
-use std::ops::RangeInclusive;
-
 use rayon::prelude::*;
 
-use crate::calculator::{CORE_LENGTH, char_to_num, decryptor::decrypt_numbers, num_to_char};
-
-/// Every letter in the range `'A'..='Z'` converted to cypher numbers
-const ALPHABET: RangeInclusive<u32> = 1..=26;
+use crate::calculator::{ALPHABET, CORE_LENGTH, Letter, decryptor::decrypt_numbers, num_to_char};
 
 /**
    Brute force encryption
    Tries every posible 4-letter combination that reaches the input character
    `input` may be uppercase or lowercase
 */
-pub fn encrypt_letter(c: char) -> Result<Vec<[char; CORE_LENGTH]>, String> {
-    let target = char_to_num(c).ok_or("Invalid input : expected an alphabetic letter")?;
-
+pub fn encrypt_letter(letter: Letter) -> Vec<[char; CORE_LENGTH]> {
     let all_combinations = ALPHABET.flat_map(move |a| {
         ALPHABET.flat_map(move |b| ALPHABET.flat_map(move |c| ALPHABET.map(move |d| [a, b, c, d])))
     });
@@ -23,7 +16,7 @@ pub fn encrypt_letter(c: char) -> Result<Vec<[char; CORE_LENGTH]>, String> {
         .par_bridge()
         .filter_map(|numbers| {
             let core = decrypt_numbers(numbers).ok()?;
-            (core == target).then_some(numbers)
+            (core == *letter).then_some(numbers)
         })
         .filter_map(|[a, b, c, d]| {
             Some([
@@ -37,7 +30,7 @@ pub fn encrypt_letter(c: char) -> Result<Vec<[char; CORE_LENGTH]>, String> {
 
     output.sort();
 
-    Ok(output)
+    output
 }
 
 #[cfg(test)]
@@ -47,7 +40,8 @@ mod tests {
 
     #[test]
     fn known_letters() {
-        let values = encrypt_letter('L').unwrap();
+        let letter = Letter::try_from('L').unwrap();
+        let values = encrypt_letter(letter);
         #[allow(non_snake_case)]
         let known_L = [
             ['D', 'A', 'T', 'E'],
@@ -56,19 +50,6 @@ mod tests {
         ];
         for word in &known_L {
             assert!(values.contains(word))
-        }
-
-        let alternative = encrypt_letter('L').unwrap();
-        for word in &known_L {
-            assert!(alternative.contains(word));
-        }
-    }
-
-    #[test]
-    fn alphabet() {
-        for (num, c) in ALPHABET.zip('A'..='Z') {
-            assert_eq!(num_to_char(num), Some(c));
-            assert_eq!(char_to_num(c), Some(num));
         }
     }
 }

@@ -4,6 +4,11 @@ pub mod encryptor;
 /// Core is composed of 4 numbers
 pub const CORE_LENGTH: usize = 4;
 
+use std::{
+    ops::{self, RangeInclusive},
+    str::FromStr,
+};
+
 use bitflags::bitflags;
 
 bitflags! {
@@ -53,6 +58,41 @@ impl Operation {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Letter(u32);
+impl TryFrom<char> for Letter {
+    type Error = ParseLetterError;
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        char_to_num(c).map(Letter).ok_or(ParseLetterError)
+    }
+}
+impl FromStr for Letter {
+    type Err = ParseLetterError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        let Some(c) = chars.next() else {
+            return Err(ParseLetterError);
+        };
+        if chars.next().is_some() {
+            return Err(ParseLetterError);
+        };
+        Letter::try_from(c)
+    }
+}
+impl ops::Deref for Letter {
+    type Target = u32;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+#[display("Invalid input: expected an alphabetic letter")]
+pub struct ParseLetterError;
+
+/// Every letter in the range `'A'..='Z'` converted to cypher numbers
+const ALPHABET: RangeInclusive<u32> = 1..=26;
+
 /**
     Converts user provided `char` to cyphered number in the range `1..=26`
 
@@ -73,10 +113,9 @@ pub fn char_to_num(c: char) -> Option<u32> {
     Returns None if the character is invalid
 */
 pub fn num_to_char(num: u32) -> Option<char> {
-    match num {
-        1..=26 => unsafe { Some(char::from_u32_unchecked('A' as u32 - 1 + num)) },
-        _ => None,
-    }
+    ALPHABET
+        .contains(&num)
+        .then(|| unsafe { char::from_u32_unchecked('A' as u32 - 1 + num) })
 }
 
 #[cfg(test)]
@@ -84,21 +123,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn alphabet() {
+        for (num, c) in ALPHABET.zip('A'..='Z') {
+            assert_eq!(num_to_char(num), Some(c));
+            assert_eq!(char_to_num(c), Some(num));
+        }
+    }
+
+    #[test]
     fn from_char_to_num() {
         assert_eq!(char_to_num('A'), Some(1));
+        assert_eq!(char_to_num('a'), Some(1));
+        assert_eq!(char_to_num('Z'), Some(26));
+        assert_eq!(char_to_num('z'), Some(26));
     }
 
     #[test]
     fn from_num_to_char() {
         assert_eq!(num_to_char(1), Some('A'));
-    }
-
-    #[test]
-    fn round_trip() {
-        for c in 'A'..='Z' {
-            let num = char_to_num(c).unwrap();
-            let output = num_to_char(num).unwrap();
-            assert_eq!(c, output)
-        }
     }
 }

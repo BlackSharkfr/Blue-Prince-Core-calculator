@@ -1,6 +1,9 @@
+use std::str::FromStr;
+
 use clap::{Parser, Subcommand};
 
 use crate::calculator::{
+    Letter,
     decryptor::{DecryptInput, decrypt_numbers, decrypt_word},
     encryptor::encrypt_letter,
     num_to_char,
@@ -9,24 +12,24 @@ use crate::calculator::{
 /// Blue Prince numeric core calculator
 ///
 /// A program to solve puzzles in the video game 'Blue Prince'
-/// Usage without command uses Terminal UI mode by default
+/// Usage without a command runs the Terminal UI mode
 #[derive(Parser, Debug)]
-#[command(version, about, long_about, verbatim_doc_comment)]
+#[command(version, about, verbatim_doc_comment)]
 pub struct Args {
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Option<Command>,
 }
 
-pub fn parse_command() -> Option<Commands> {
+/// Parse application arguments using [`clap`]
+///
+/// # Exits
+/// [`clap`] will exit the program if parsing fails
+pub fn parse_command_or_exit() -> Option<Command> {
     Args::parse().command
 }
 
-#[derive(Subcommand, Debug, Default)]
-
-pub enum Commands {
-    /// Runs the app in Terminal-UI mode. Used by default when no command is provided
-    #[default]
-    UI,
+#[derive(Subcommand, Debug)]
+pub enum Command {
     /// Computes every 4-letter word for a given letter
     #[command(name = "encode")]
     Encrypt {
@@ -37,8 +40,8 @@ pub enum Commands {
         ///
         /// Tip: output tend to be long (2000~6000 lines), it is recommended to pipe the output into a file
         ///     encode L > file.txt
-        #[arg(value_name = "LETTER", verbatim_doc_comment)]
-        c: char,
+        #[arg(value_name = "LETTER", value_parser = Letter::from_str, verbatim_doc_comment)]
+        letter: Letter,
     },
     /// Computes numeric cores from a given cyphertext
     #[command(name = "decode")]
@@ -50,29 +53,27 @@ pub enum Commands {
         /// Examples:
         ///     decode "CLAM tell FIND"
         ///     decode "156 21 9 7
-        #[arg(value_name = "WORDS or 4-NUMBERS", verbatim_doc_comment)]
-        str: String,
+        #[arg(value_name = "WORDS or 4-NUMBERS", value_parser = DecryptInput::from_str, verbatim_doc_comment)]
+        input: DecryptInput,
     },
 }
 
-pub fn run(command: Commands) -> Result<(), String> {
+pub fn run(command: Command) -> Result<(), String> {
     match command {
-        Commands::UI => Ok(()),
-        Commands::Encrypt { c } => encrypt(c),
-        Commands::Decrypt { str } => decrypt(&str),
+        Command::Encrypt { letter } => encrypt(letter),
+        Command::Decrypt { input } => decrypt(input),
     }
 }
 
-fn encrypt(c: char) -> Result<(), String> {
-    let cores = encrypt_letter(c)?;
+fn encrypt(letter: Letter) -> Result<(), String> {
+    let cores = encrypt_letter(letter);
     for core in cores {
         println!("{}{}{}{}", core[0], core[1], core[2], core[3])
     }
     Ok(())
 }
 
-fn decrypt(input: &str) -> Result<(), String> {
-    let input = DecryptInput::parse(input).map_err(|e| e.to_string())?;
+fn decrypt(input: DecryptInput) -> Result<(), String> {
     match input {
         DecryptInput::Numbers(numbers) => {
             let core = decrypt_numbers(numbers).map_err(|e| e.to_string())?;
@@ -82,7 +83,7 @@ fn decrypt(input: &str) -> Result<(), String> {
         DecryptInput::Words(words) => {
             let mut errors = Vec::new();
             for word in words {
-                match decrypt_word(word) {
+                match decrypt_word(&word) {
                     Ok(core) => println!("{} - {core}", num_to_char(core).unwrap_or('?')),
                     Err(e) => {
                         println!("{e}");
@@ -93,8 +94,9 @@ fn decrypt(input: &str) -> Result<(), String> {
             match errors.is_empty() {
                 true => Ok(()),
                 false => Err(format!(
-                    "failed to decode {} values. {}",
+                    "Failed to decode {} word{}: `{}`",
                     errors.len(),
+                    if errors.len() > 1 { "s" } else { "" },
                     errors.join(", ")
                 )),
             }
