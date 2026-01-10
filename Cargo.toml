@@ -8,9 +8,13 @@ license = "MIT"
 
 [dependencies]
 bitflags = "2.10.0"
-clap = {version = "4.5.54", features = ["derive"]}
+clap = { version = "4.5.54", features = ["derive"] }
 crossterm = "0.29.0"
 derive_more = { version = "2.1.1", features = ["display", "error"] }
 itertools = "0.14.0"
 ratatui = "0.30.0"
 rayon = "1.11.0"
+
+[profile.release]
+lto = true
+opt-level = "z"
