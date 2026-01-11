@@ -7,8 +7,8 @@ use ratatui::{
 
 use crate::{
     calculator::{
+        Letter,
         decryptor::{DecryptError, DecryptInput, decrypt_numbers, decrypt_word},
-        num_to_char,
     },
     ui::{App, Mode, widgets::Prompt},
 };
@@ -245,8 +245,8 @@ impl DecryptResult {
         let text = self
             .cores
             .iter()
-            .map(|core| match core.and_then(num_to_char) {
-                Some(c) => Span::from(c.to_string()).green(),
+            .map(|core| match core.and_then(Letter::try_from_num) {
+                Some(letter) => Span::from(letter.to_string()).green(),
                 None => {
                     let span = Span::from("?");
                     match core.is_some() {

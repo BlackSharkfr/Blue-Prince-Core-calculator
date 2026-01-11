@@ -4,10 +4,7 @@ pub mod encryptor;
 /// Core is composed of 4 numbers
 pub const CORE_LENGTH: usize = 4;
 
-use std::{
-    ops::{self, RangeInclusive},
-    str::FromStr,
-};
+use std::{fmt::Display, ops::RangeInclusive, str::FromStr};
 
 use bitflags::bitflags;
 
@@ -58,31 +55,69 @@ impl Operation {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Letter(u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Letter(char);
+impl Letter {
+    pub fn try_from_char(c: char) -> Option<Self> {
+        match c {
+            'A'..='Z' => Some(Self(c)),
+            'a'..='z' => Some(Self(c.to_ascii_uppercase())),
+            _ => None,
+        }
+    }
+
+    pub fn try_from_num(num: u32) -> Option<Self> {
+        ALPHABET
+            .contains(&num)
+            .then(|| unsafe { char::from_u32_unchecked('A' as u32 - 1 + num) })
+            .map(Self)
+    }
+
+    pub fn to_num(self) -> u32 {
+        1 + self.0 as u32 - 'A' as u32
+    }
+
+    pub fn to_char(self) -> char {
+        self.into()
+    }
+}
+impl TryFrom<u32> for Letter {
+    type Error = ParseLetterError;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Self::try_from_num(value).ok_or(ParseLetterError)
+    }
+}
 impl TryFrom<char> for Letter {
     type Error = ParseLetterError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
-        char_to_num(c).map(Letter).ok_or(ParseLetterError)
+        Self::try_from_char(c).ok_or(ParseLetterError)
     }
 }
 impl FromStr for Letter {
     type Err = ParseLetterError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut chars = s.chars();
-        let Some(c) = chars.next() else {
+        if s.len() != 1 {
             return Err(ParseLetterError);
-        };
-        if chars.next().is_some() {
-            return Err(ParseLetterError);
-        };
-        Letter::try_from(c)
+        }
+        s.chars()
+            .next()
+            .ok_or(ParseLetterError)
+            .and_then(Letter::try_from)
     }
 }
-impl ops::Deref for Letter {
-    type Target = u32;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl From<Letter> for char {
+    fn from(value: Letter) -> Self {
+        value.0
+    }
+}
+impl Display for Letter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl FromIterator<Letter> for String {
+    fn from_iter<T: IntoIterator<Item = Letter>>(iter: T) -> Self {
+        iter.into_iter().map(|letter| letter.0).collect()
     }
 }
 
@@ -93,53 +128,41 @@ pub struct ParseLetterError;
 /// Every letter in the range `'A'..='Z'` converted to cypher numbers
 const ALPHABET: RangeInclusive<u32> = 1..=26;
 
-/**
-    Converts user provided `char` to cyphered number in the range `1..=26`
-
-    Input expects ASCII letter.
-    Uppercase and lowercase are converted to the same number
-*/
-pub fn char_to_num(c: char) -> Option<u32> {
-    match c {
-        'a'..='z' => Some(1 + c as u32 - 'a' as u32),
-        'A'..='Z' => Some(1 + c as u32 - 'A' as u32),
-        _ => None,
-    }
-}
-
-/**
-    Converts cypher number in the range `1..=26` to char
-
-    Returns None if the character is invalid
-*/
-pub fn num_to_char(num: u32) -> Option<char> {
-    ALPHABET
-        .contains(&num)
-        .then(|| unsafe { char::from_u32_unchecked('A' as u32 - 1 + num) })
-}
-
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
 
     #[test]
     fn alphabet() {
-        for (num, c) in ALPHABET.zip('A'..='Z') {
-            assert_eq!(num_to_char(num), Some(c));
-            assert_eq!(char_to_num(c), Some(num));
-        }
+        assert_eq!(ALPHABET.count(), 26);
+        assert_eq!(ALPHABET.unique().count(), 26);
     }
 
     #[test]
-    fn from_char_to_num() {
-        assert_eq!(char_to_num('A'), Some(1));
-        assert_eq!(char_to_num('a'), Some(1));
-        assert_eq!(char_to_num('Z'), Some(26));
-        assert_eq!(char_to_num('z'), Some(26));
-    }
+    fn letter_conversions() {
+        let numbers: [Letter; 26] = ALPHABET
+            .flat_map(|num| Letter::try_from_num(num))
+            .collect_array()
+            .unwrap();
 
-    #[test]
-    fn from_num_to_char() {
-        assert_eq!(num_to_char(1), Some('A'));
+        let chars_uppercase: [Letter; 26] = ('A'..='Z')
+            .flat_map(|c| Letter::try_from(c))
+            .collect_array()
+            .unwrap();
+        let chars_lowercase: [Letter; 26] = ('a'..='z')
+            .flat_map(|c| Letter::try_from(c))
+            .collect_array()
+            .unwrap();
+        let strings: [Letter; 26] = ('A'..='Z')
+            .map(|c| c.to_string())
+            .flat_map(|str| str.parse::<Letter>())
+            .collect_array()
+            .unwrap();
+
+        assert_eq!(numbers, strings);
+        assert_eq!(chars_uppercase, chars_lowercase);
+        assert_eq!(numbers, chars_lowercase);
     }
 }

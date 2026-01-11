@@ -1,5 +1,5 @@
 use crate::{
-    calculator::{CORE_LENGTH, encryptor::encrypt_letter},
+    calculator::{CORE_LENGTH, Letter, encryptor::encrypt_letter},
     ui::{App, Mode, widgets::Prompt},
 };
 use ratatui::{
@@ -18,7 +18,7 @@ pub struct Encrypt {
 
 struct EncryptResults {
     input: String,
-    cyphers: Vec<[char; CORE_LENGTH]>,
+    cyphers: Vec<[Letter; CORE_LENGTH]>,
 }
 
 impl Encrypt {
@@ -77,7 +77,7 @@ impl Encrypt {
                                         + row as usize
                                         + (col as usize * table_rows as usize),
                                 )
-                                .map(|chars| chars.iter().collect::<String>())
+                                .map(|letters| letters.iter().cloned().collect::<String>())
                         }))
                     }),
                     std::iter::repeat_n(Constraint::Length(col_width), table_cols as usize),
