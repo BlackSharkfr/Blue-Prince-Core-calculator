@@ -6,7 +6,6 @@ use crate::calculator::{
     Letter,
     decryptor::{DecryptInput, decrypt_numbers, decrypt_word},
     encryptor::encrypt_letter,
-    num_to_char,
 };
 
 /// Blue Prince numeric core calculator
@@ -84,7 +83,12 @@ fn decrypt(input: DecryptInput) -> Result<(), String> {
             let mut errors = Vec::new();
             for word in words {
                 match decrypt_word(&word) {
-                    Ok(core) => println!("{} - {core}", num_to_char(core).unwrap_or('?')),
+                    Ok(core) => println!(
+                        "{} - {core}",
+                        Letter::try_from_num(core)
+                            .map(Letter::to_char)
+                            .unwrap_or('?')
+                    ),
                     Err(e) => {
                         println!("{e}");
                         errors.push(word)

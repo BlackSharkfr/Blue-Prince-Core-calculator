@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use crate::calculator::{CORE_LENGTH, Operation, char_to_num};
+use crate::calculator::{CORE_LENGTH, Letter, Operation};
 
 /**
     Computes the numeric core from the input 4-letter `word`
@@ -21,7 +21,8 @@ pub fn decrypt_word(word: &str) -> Result<u32, DecryptError> {
 
     let numbers = word
         .chars()
-        .filter_map(char_to_num)
+        .flat_map(Letter::try_from)
+        .map(Letter::to_num)
         .collect_array()
         .ok_or(DecryptError::InputLetter)?;
 
@@ -122,29 +123,18 @@ mod tests {
 
     #[test]
     fn known_letters() {
-        assert_eq!(decrypt_word("PEAK").ok(), char_to_num('A'));
-        assert_eq!(decrypt_word("TREE").ok(), char_to_num('B'));
-        assert_eq!(decrypt_word("JOYA").ok(), char_to_num('E'));
-        assert_eq!(decrypt_word("MAIL").ok(), char_to_num('I'));
-        assert_eq!(decrypt_word("ROCK").ok(), char_to_num('K'));
-        assert_eq!(decrypt_word("DATE").ok(), char_to_num('L'));
-        assert_eq!(decrypt_word("WILL").ok(), char_to_num('N'));
-        assert_eq!(decrypt_word("VASE").ok(), char_to_num('O'));
-        assert_eq!(decrypt_word("WELL").ok(), char_to_num('R'));
-        assert_eq!(decrypt_word("PIGS").ok(), char_to_num('S'));
-        assert_eq!(decrypt_word("SAND").ok(), char_to_num('T'));
-        assert_eq!(decrypt_word("CLAM").ok(), char_to_num('W'));
-    }
-
-    #[test]
-    fn equivalence_numbers_and_letters() {
-        let numbers = [
-            char_to_num('P').unwrap(),
-            char_to_num('E').unwrap(),
-            char_to_num('A').unwrap(),
-            char_to_num('K').unwrap(),
-        ];
-        assert_eq!(decrypt_numbers(numbers), decrypt_word("PEAK"));
+        assert_eq!(decrypt_word("PEAK").unwrap(), Letter('A').to_num());
+        assert_eq!(decrypt_word("TREE").unwrap(), Letter('B').to_num());
+        assert_eq!(decrypt_word("JOYA").unwrap(), Letter('E').to_num());
+        assert_eq!(decrypt_word("MAIL").unwrap(), Letter('I').to_num());
+        assert_eq!(decrypt_word("ROCK").unwrap(), Letter('K').to_num());
+        assert_eq!(decrypt_word("DATE").unwrap(), Letter('L').to_num());
+        assert_eq!(decrypt_word("WILL").unwrap(), Letter('N').to_num());
+        assert_eq!(decrypt_word("VASE").unwrap(), Letter('O').to_num());
+        assert_eq!(decrypt_word("WELL").unwrap(), Letter('R').to_num());
+        assert_eq!(decrypt_word("PIGS").unwrap(), Letter('S').to_num());
+        assert_eq!(decrypt_word("SAND").unwrap(), Letter('T').to_num());
+        assert_eq!(decrypt_word("CLAM").unwrap(), Letter('W').to_num());
     }
 
     #[test]
